@@ -16,7 +16,7 @@ import (
 	"github.com/prometheus/common/log"
 )
 
-const version string = "0.0.1"
+const version string = "0.1.0"
 const maxTargets = 255
 
 var (
@@ -100,8 +100,8 @@ func addTarget(target string, pos int) error {
 	}
 
 	log.Infoln("adding target", target)
-
 	monitor.AddTargetDelayed(target, *ipAddr, 10*time.Millisecond*time.Duration(pos))
+	
 	return nil
 }
 
