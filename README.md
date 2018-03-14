@@ -9,6 +9,8 @@ For more information check the [source code][github].
 
 ## Getting Started
 
+### Shell
+
 To run the exporter via:
 
 ```bash
@@ -19,6 +21,12 @@ Help on flags:
 
 ```bash
 ./ping_exporter --help
+```
+
+Getting the results for testing via cURL:
+
+```bash
+curl http://localhost:9427/metrics
 ```
 
 ### Docker
