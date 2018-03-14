@@ -1,6 +1,8 @@
 package main
 
 import (
+	"sync"
+
 	mon "github.com/digineo/go-ping/monitor"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -14,10 +16,12 @@ var (
 	stddevDesc = prometheus.NewDesc(prefix+"std_deviation_ms", "Standard deviation in millis", labelNames, nil)
 	lossDesc   = prometheus.NewDesc(prefix+"loss_percent", "Packet loss in percent", labelNames, nil)
 	labelNames = []string{"target"}
+	mutex      = &sync.Mutex{}
 )
 
 type pingCollector struct {
 	monitor *mon.Monitor
+	metrics map[string]*mon.Metrics
 }
 
 func (p *pingCollector) Describe(ch chan<- *prometheus.Desc) {
@@ -29,7 +33,20 @@ func (p *pingCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (p *pingCollector) Collect(ch chan<- prometheus.Metric) {
-	for target, metrics := range p.monitor.ExportAndClear() {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	metrics := p.monitor.ExportAndClear()
+
+	if len(metrics) > 0 {
+		p.metrics = metrics
+	}
+
+	if p.metrics == nil || len(p.metrics) == 0 {
+		return
+	}
+
+	for target, metrics := range p.metrics {
 		ch <- prometheus.MustNewConstMetric(bestDesc, prometheus.GaugeValue, float64(metrics.Best), target)
 		ch <- prometheus.MustNewConstMetric(worstDesc, prometheus.GaugeValue, float64(metrics.Worst), target)
 		ch <- prometheus.MustNewConstMetric(meanDesc, prometheus.GaugeValue, float64(metrics.Mean), target)
