@@ -23,7 +23,7 @@ Help on flags:
 
 ### Docker
 
-https://hub.docker.com/r/czerwonk/ping_exporter/status
+https://hub.docker.com/r/czerwonk/ping_exporter
 
 To run the ping_exporter as a Docker container, run:
 
