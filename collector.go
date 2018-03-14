@@ -18,7 +18,6 @@ var (
 
 type pingCollector struct {
 	monitor *mon.Monitor
-	targets []string
 }
 
 func (p *pingCollector) Describe(ch chan<- *prometheus.Desc) {

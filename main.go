@@ -101,7 +101,7 @@ func addTarget(target string, pos int) error {
 
 	log.Infoln("adding target", target)
 	monitor.AddTargetDelayed(target, *ipAddr, 10*time.Millisecond*time.Duration(pos))
-	
+
 	return nil
 }
 
@@ -120,7 +120,7 @@ func startServer(monitor *mon.Monitor, targets []string) {
 	})
 
 	reg := prometheus.NewRegistry()
-	reg.MustRegister(&pingCollector{monitor: monitor, targets: targets})
+	reg.MustRegister(&pingCollector{monitor: monitor})
 	h := promhttp.HandlerFor(reg, promhttp.HandlerOpts{
 		ErrorLog:      log.NewErrorLogger(),
 		ErrorHandling: promhttp.ContinueOnError})
