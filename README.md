@@ -38,6 +38,6 @@ Simply fork and create a pull-request. We'll try to respond in a timely fashion.
 
 ## License
 
-MIT License, Copyright (c) 2018
-Philip Berndroth [pberndro](https://twitter.com/pberndro)
+MIT License, Copyright (c) 2018  
+Philip Berndroth [pberndro](https://twitter.com/pberndro)  
 Daniel Czerwonk] [dan_nrw](https://twitter.com/dan_nrw)
