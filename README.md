@@ -18,12 +18,12 @@ To run the exporter via:
 Help on flags:
 
 ```bash
-./haproxy_exporter --help
+./ping_exporter --help
 ```
 
 ### Docker
 
-[![Docker Repository](https://hub.docker.com/r/czerwonk/ping_exporter/status)][quay]
+https://hub.docker.com/r/czerwonk/ping_exporter/status
 
 To run the ping_exporter as a Docker container, run:
 
