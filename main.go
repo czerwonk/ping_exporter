@@ -17,21 +17,22 @@ import (
 )
 
 const version string = "0.0.1"
+const maxTargets = 255
 
 var (
-	showVersion     = flag.Bool("version", false, "Print version information.")
-	listenAddress   = flag.String("web.listen-address", ":8080", "Address on which to expose metrics and web interface.")
-	metricsPath     = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
+	showVersion   = flag.Bool("version", false, "Print version information.")
+	listenAddress = flag.String("web.listen-address", ":9427", "Address on which to expose metrics and web interface.")
+	metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
 
 	pingInterval = flag.Duration("pingInterval", time.Duration(5)*time.Second, "interval for ICMP echo requests")
-	pingTimeout = flag.Duration("pingTimeout", time.Duration(4)*time.Second, "timeout for ICMP echo request")
+	pingTimeout  = flag.Duration("pingTimeout", time.Duration(4)*time.Second, "timeout for ICMP echo request")
 
 	monitor *mon.Monitor
 )
 
 func init() {
 	flag.Usage = func() {
-		fmt.Println("Usage: ping-exporter [ ... ]\n\nParameters:")
+		fmt.Println("Usage:", os.Args[0], "[options] target1 target2 ...")
 		fmt.Println()
 		flag.PrintDefaults()
 	}
@@ -40,29 +41,31 @@ func init() {
 func main() {
 	flag.Parse()
 
-	//todo: remove global variable
-	var targets = flag.Args()
-
-	// Targets empty?
-	if len(targets) == 0 {
-		fmt.Println("Usage:", os.Args[0], "[options] target1 target2 ...")
-		flag.PrintDefaults()
-		os.Exit(1)
-	}
-
-	// Too many targets?
-	if len(targets) > int(^byte(0)) {
-		fmt.Println("Too many targets")
-		os.Exit(1)
-	}
-
 	if *showVersion {
 		printVersion()
 		os.Exit(0)
 	}
 
-	startMonitor(targets)
-	startServer()
+	var targets = flag.Args()
+
+	if len(targets) == 0 {
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	// Too many targets?
+	if len(targets) > maxTargets {
+		log.Errorln("Too many targets")
+		os.Exit(1)
+	}
+
+	m, err := startMonitor(targets)
+	if err != nil {
+		log.Errorln(err)
+		os.Exit(2)
+	}
+
+	startServer(m, targets)
 }
 
 func printVersion() {
@@ -72,29 +75,37 @@ func printVersion() {
 	fmt.Println("Metric exporter for go-icmp")
 }
 
-func startMonitor(targets []string){
-
+func startMonitor(targets []string) (*mon.Monitor, error) {
 	pinger, err := ping.New("0.0.0.0", "::")
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	monitor = mon.New(pinger, *pingInterval, *pingTimeout)
-	defer monitor.Stop()
 
-	// Add targets
 	for i, target := range targets {
-		ipAddr, err := net.ResolveIPAddr("", target)
+		err := addTarget(target, i)
 		if err != nil {
-			fmt.Printf("invalid target '%s': %s", target, err)
-			continue
+			log.Errorln(err)
 		}
-		fmt.Printf("adding target '%s'\n", target)
-		monitor.AddTargetDelayed(string([]byte{byte(i)}), *ipAddr, 10*time.Millisecond*time.Duration(i))
 	}
+
+	return monitor, nil
 }
 
-func startServer() {
+func addTarget(target string, pos int) error {
+	ipAddr, err := net.ResolveIPAddr("", target)
+	if err != nil {
+		return fmt.Errorf("invalid target '%s': %s", target, err)
+	}
+
+	log.Infoln("adding target", target)
+
+	monitor.AddTargetDelayed(target, *ipAddr, 10*time.Millisecond*time.Duration(pos))
+	return nil
+}
+
+func startServer(monitor *mon.Monitor, targets []string) {
 	log.Infof("Starting ping exporter (Version: %s)", version)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
@@ -108,18 +119,13 @@ func startServer() {
 			</html>`))
 	})
 
-	http.HandleFunc(*metricsPath, handleMetricsRequest)
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(&pingCollector{monitor: monitor, targets: targets})
+	h := promhttp.HandlerFor(reg, promhttp.HandlerOpts{
+		ErrorLog:      log.NewErrorLogger(),
+		ErrorHandling: promhttp.ContinueOnError})
+	http.HandleFunc("/metrics", h.ServeHTTP)
 
 	log.Infof("Listening for %s on %s", *metricsPath, *listenAddress)
 	log.Fatal(http.ListenAndServe(*listenAddress, nil))
-}
-
-func handleMetricsRequest(w http.ResponseWriter, r *http.Request) {
-
-	reg := prometheus.NewRegistry()
-	reg.MustRegister(&PingCollector{})
-
-	promhttp.HandlerFor(reg, promhttp.HandlerOpts{
-		ErrorLog:      log.NewErrorLogger(),
-		ErrorHandling: promhttp.ContinueOnError}).ServeHTTP(w, r)
 }
