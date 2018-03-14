@@ -1,4 +1,7 @@
 # ping_exporter
+[![Build Status](https://travis-ci.org/czerwonk/ping_exporter.svg)](https://travis-ci.org/czerwonk/ping_exporter)
+[![Go Report Card](https://goreportcard.com/badge/github.com/czerwonk/ping_exporter)](https://goreportcard.com/report/github.com/czerwonk/ping_exporter)
+
 Prometheus exporter for ICMP echo requests using https://github.com/digineo/go-ping
 
 This is a simple server that scrapes go-ping stats and exports them via HTTP for
