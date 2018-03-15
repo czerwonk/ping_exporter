@@ -17,7 +17,6 @@ import (
 )
 
 const version string = "0.2.0"
-const maxTargets = 255
 
 var (
 	showVersion   = flag.Bool("version", false, "Print version information.")
@@ -48,12 +47,6 @@ func main() {
 
 	if len(targets) == 0 {
 		flag.Usage()
-		os.Exit(1)
-	}
-
-	// Too many targets?
-	if len(targets) > maxTargets {
-		log.Errorln("Too many targets")
 		os.Exit(1)
 	}
 
