@@ -16,7 +16,7 @@ import (
 	"github.com/prometheus/common/log"
 )
 
-const version string = "0.1.0"
+const version string = "0.2.0"
 const maxTargets = 255
 
 var (
@@ -26,8 +26,6 @@ var (
 
 	pingInterval = flag.Duration("pingInterval", time.Duration(5)*time.Second, "interval for ICMP echo requests")
 	pingTimeout  = flag.Duration("pingTimeout", time.Duration(4)*time.Second, "timeout for ICMP echo request")
-
-	monitor *mon.Monitor
 )
 
 func init() {
@@ -81,10 +79,10 @@ func startMonitor(targets []string) (*mon.Monitor, error) {
 		return nil, err
 	}
 
-	monitor = mon.New(pinger, *pingInterval, *pingTimeout)
+	monitor := mon.New(pinger, *pingInterval, *pingTimeout)
 
 	for i, target := range targets {
-		err := addTarget(target, i)
+		err := addTarget(target, i, monitor)
 		if err != nil {
 			log.Errorln(err)
 		}
@@ -93,14 +91,24 @@ func startMonitor(targets []string) (*mon.Monitor, error) {
 	return monitor, nil
 }
 
-func addTarget(target string, pos int) error {
-	ipAddr, err := net.ResolveIPAddr("", target)
+func addTarget(target string, pos int, monitor *mon.Monitor) error {
+	addrs, err := net.LookupIP(target)
 	if err != nil {
-		return fmt.Errorf("invalid target '%s': %s", target, err)
+		return err
 	}
 
-	log.Infoln("adding target", target)
-	monitor.AddTargetDelayed(target, *ipAddr, 10*time.Millisecond*time.Duration(pos))
+	for _, addr := range addrs {
+		t := fmt.Sprintf("%s %s ", target, addr)
+
+		if addr.To4() == nil {
+			t += "6"
+		} else {
+			t += "4"
+		}
+
+		log.Infoln("adding target", target)
+		monitor.AddTargetDelayed(t, net.IPAddr{IP: addr, Zone: ""}, 10*time.Millisecond*time.Duration(pos))
+	}
 
 	return nil
 }
