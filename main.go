@@ -16,15 +16,15 @@ import (
 	"github.com/prometheus/common/log"
 )
 
-const version string = "0.2.0"
+const version string = "0.3.0"
 
 var (
 	showVersion   = flag.Bool("version", false, "Print version information.")
 	listenAddress = flag.String("web.listen-address", ":9427", "Address on which to expose metrics and web interface.")
 	metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
 
-	pingInterval = flag.Duration("pingInterval", time.Duration(5)*time.Second, "interval for ICMP echo requests")
-	pingTimeout  = flag.Duration("pingTimeout", time.Duration(4)*time.Second, "timeout for ICMP echo request")
+	pingInterval = flag.Duration("ping.interval", time.Duration(5)*time.Second, "interval for ICMP echo requests")
+	pingTimeout  = flag.Duration("ping.timeout", time.Duration(4)*time.Second, "timeout for ICMP echo request")
 )
 
 func init() {

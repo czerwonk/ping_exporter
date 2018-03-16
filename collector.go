@@ -11,12 +11,9 @@ import (
 const prefix = "ping_"
 
 var (
-	bestDesc   = prometheus.NewDesc(prefix+"best_ms", "Best round trip time in millis", labelNames, nil)
-	worstDesc  = prometheus.NewDesc(prefix+"worst_ms", "Worst round trip time in millis", labelNames, nil)
-	meanDesc   = prometheus.NewDesc(prefix+"mean_ms", "Mean round trip time in millis", labelNames, nil)
-	stddevDesc = prometheus.NewDesc(prefix+"std_deviation_ms", "Standard deviation in millis", labelNames, nil)
-	lossDesc   = prometheus.NewDesc(prefix+"loss_percent", "Packet loss in percent", labelNames, nil)
 	labelNames = []string{"target", "ip", "ip_version"}
+	rttDesc    = prometheus.NewDesc(prefix+"rtt_ms", "Round trip time in millis", append(labelNames, "type"), nil)
+	lossDesc   = prometheus.NewDesc(prefix+"loss_percent", "Packet loss in percent", labelNames, nil)
 	mutex      = &sync.Mutex{}
 )
 
@@ -26,10 +23,7 @@ type pingCollector struct {
 }
 
 func (p *pingCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- bestDesc
-	ch <- worstDesc
-	ch <- meanDesc
-	ch <- stddevDesc
+	ch <- rttDesc
 	ch <- lossDesc
 }
 
@@ -51,10 +45,12 @@ func (p *pingCollector) Collect(ch chan<- prometheus.Metric) {
 		t := strings.Split(target, " ")
 		l := []string{t[0], t[1], t[2]}
 
-		ch <- prometheus.MustNewConstMetric(bestDesc, prometheus.GaugeValue, float64(metrics.Best), l...)
-		ch <- prometheus.MustNewConstMetric(worstDesc, prometheus.GaugeValue, float64(metrics.Worst), l...)
-		ch <- prometheus.MustNewConstMetric(meanDesc, prometheus.GaugeValue, float64(metrics.Mean), l...)
-		ch <- prometheus.MustNewConstMetric(stddevDesc, prometheus.GaugeValue, float64(metrics.StdDev), l...)
-		ch <- prometheus.MustNewConstMetric(lossDesc, prometheus.GaugeValue, float64(metrics.PacketsLost)/float64(metrics.PacketsSent), l...)
+		ch <- prometheus.MustNewConstMetric(rttDesc, prometheus.GaugeValue, float64(metrics.Best), append(l, "best")...)
+		ch <- prometheus.MustNewConstMetric(rttDesc, prometheus.GaugeValue, float64(metrics.Worst), append(l, "worst")...)
+		ch <- prometheus.MustNewConstMetric(rttDesc, prometheus.GaugeValue, float64(metrics.Mean), append(l, "mean")...)
+		ch <- prometheus.MustNewConstMetric(rttDesc, prometheus.GaugeValue, float64(metrics.StdDev), append(l, "std_dev")...)
+
+		loss := float64(metrics.PacketsLost) / float64(metrics.PacketsSent)
+		ch <- prometheus.MustNewConstMetric(lossDesc, prometheus.GaugeValue, loss, l...)
 	}
 }
