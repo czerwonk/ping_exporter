@@ -11,9 +11,9 @@ For more information check the [source code][go-ping].
 
 [go-ping]: https://github.com/digineo/go-ping
 
-## Remarks
+# Remarks
 
-# Version >= 3.0
+## Version >= 3.0
 Since [Prometheus best practices][prom-bcp] suggest to use labels for a specific type of metric (eg. avg, worst, ...) we renamed the following metrics to one single metric (`ping_rtt_ms`) and added an additional `type` label:
 * ~~ping_best_ms~~
 * ~~ping_worst_ms~~
