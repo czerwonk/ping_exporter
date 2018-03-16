@@ -23,8 +23,8 @@ var (
 	listenAddress = flag.String("web.listen-address", ":9427", "Address on which to expose metrics and web interface.")
 	metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
 
-	pingInterval = flag.Duration("ping.interval", time.Duration(5)*time.Second, "interval for ICMP echo requests")
-	pingTimeout  = flag.Duration("ping.timeout", time.Duration(4)*time.Second, "timeout for ICMP echo request")
+	pingInterval = flag.Duration("ping.interval", time.Duration(5)*time.Second, "Interval for ICMP echo requests")
+	pingTimeout  = flag.Duration("ping.timeout", time.Duration(4)*time.Second, "Timeout for ICMP echo request")
 )
 
 func init() {
