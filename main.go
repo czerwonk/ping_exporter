@@ -1,13 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"time"
 
+	"github.com/czerwonk/ping_exporter/config"
 	"github.com/digineo/go-ping"
 	mon "github.com/digineo/go-ping/monitor"
 
@@ -16,15 +19,15 @@ import (
 	"github.com/prometheus/common/log"
 )
 
-const version string = "0.3.1"
+const version string = "0.4.0"
 
 var (
-	showVersion   = flag.Bool("version", false, "Print version information.")
-	listenAddress = flag.String("web.listen-address", ":9427", "Address on which to expose metrics and web interface.")
-	metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
-
-	pingInterval = flag.Duration("ping.interval", time.Duration(5)*time.Second, "Interval for ICMP echo requests")
-	pingTimeout  = flag.Duration("ping.timeout", time.Duration(4)*time.Second, "Timeout for ICMP echo request")
+	showVersion   = flag.Bool("version", false, "Print version information")
+	listenAddress = flag.String("web.listen-address", ":9427", "Address on which to expose metrics and web interface")
+	metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics")
+	configFile    = flag.String("config.path", "", "Path to config file")
+	pingInterval  = flag.Duration("ping.interval", time.Duration(5)*time.Second, "Interval for ICMP echo requests")
+	pingTimeout   = flag.Duration("ping.timeout", time.Duration(4)*time.Second, "Timeout for ICMP echo request")
 )
 
 func init() {
@@ -43,20 +46,24 @@ func main() {
 		os.Exit(0)
 	}
 
-	var targets = flag.Args()
+	cfg, err := loadConfig()
+	if err != nil {
+		log.Errorln(err)
+		os.Exit(1)
+	}
 
-	if len(targets) == 0 {
+	if len(cfg.Targets) == 0 {
 		flag.Usage()
 		os.Exit(1)
 	}
 
-	m, err := startMonitor(targets)
+	m, err := startMonitor(cfg)
 	if err != nil {
 		log.Errorln(err)
 		os.Exit(2)
 	}
 
-	startServer(m, targets)
+	startServer(m)
 }
 
 func printVersion() {
@@ -66,7 +73,7 @@ func printVersion() {
 	fmt.Println("Metric exporter for go-icmp")
 }
 
-func startMonitor(targets []string) (*mon.Monitor, error) {
+func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
 	pinger, err := ping.New("0.0.0.0", "::")
 	if err != nil {
 		return nil, err
@@ -74,7 +81,7 @@ func startMonitor(targets []string) (*mon.Monitor, error) {
 
 	monitor := mon.New(pinger, *pingInterval, *pingTimeout)
 
-	for i, target := range targets {
+	for i, target := range cfg.Targets {
 		err := addTarget(target, i, monitor)
 		if err != nil {
 			log.Errorln(err)
@@ -106,7 +113,7 @@ func addTarget(target string, pos int, monitor *mon.Monitor) error {
 	return nil
 }
 
-func startServer(monitor *mon.Monitor, targets []string) {
+func startServer(monitor *mon.Monitor) {
 	log.Infof("Starting ping exporter (Version: %s)", version)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
@@ -129,4 +136,17 @@ func startServer(monitor *mon.Monitor, targets []string) {
 
 	log.Infof("Listening for %s on %s", *metricsPath, *listenAddress)
 	log.Fatal(http.ListenAndServe(*listenAddress, nil))
+}
+
+func loadConfig() (*config.Config, error) {
+	if *configFile == "" {
+		return &config.Config{Targets: flag.Args()}, nil
+	}
+
+	b, err := ioutil.ReadFile(*configFile)
+	if err != nil {
+		return nil, err
+	}
+
+	return config.FromYAML(bytes.NewReader(b))
 }

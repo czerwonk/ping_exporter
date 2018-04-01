@@ -13,12 +13,28 @@ For more information check the [source code][go-ping].
 
 ## Getting Started
 
+### Config file
+
+Targets can be specified in a YAML based config file:
+
+```yaml
+targets:
+  - 8.8.8.8
+  - 8.8.4.4
+  - 2001:4860:4860::8888
+  - 2001:4860:4860::8844
+```
+
 ### Shell
 
-To run the exporter via:
+To run the exporter:
 
 ```bash
 ./ping_exporter [options] target1 target2 ...
+```
+or
+```bash
+./ping_exporter -config.path my-config-file [options]
 ```
 
 Help on flags:
@@ -40,7 +56,7 @@ https://hub.docker.com/r/czerwonk/ping_exporter
 To run the ping_exporter as a Docker container, run:
 
 ```bash
-docker run -p 9427:9427 --name ping_exporter czerwonk/ping_exporter
+docker run -p 9427:9427 -v ./config:/config:ro --name ping_exporter czerwonk/ping_exporter
 ```
 
 
