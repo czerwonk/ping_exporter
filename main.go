@@ -19,7 +19,7 @@ import (
 	"github.com/prometheus/common/log"
 )
 
-const version string = "0.4.0"
+const version string = "0.4.1"
 
 var (
 	showVersion   = flag.Bool("version", false, "Print version information")
@@ -28,11 +28,12 @@ var (
 	configFile    = flag.String("config.path", "", "Path to config file")
 	pingInterval  = flag.Duration("ping.interval", time.Duration(5)*time.Second, "Interval for ICMP echo requests")
 	pingTimeout   = flag.Duration("ping.timeout", time.Duration(4)*time.Second, "Timeout for ICMP echo request")
+	dnsRefresh    = flag.Duration("dns.refresh", time.Duration(1)*time.Minute, "Interval for refreshing DNS records and updating targets accordingly (0 if disabled)")
 )
 
 func init() {
 	flag.Usage = func() {
-		fmt.Println("Usage:", os.Args[0], "[options] target1 target2 ...")
+		fmt.Println("Usage:", os.Args[0], "-config.path=$my-config-file [options]")
 		fmt.Println()
 		flag.PrintDefaults()
 	}
@@ -81,36 +82,50 @@ func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
 
 	monitor := mon.New(pinger, *pingInterval, *pingTimeout)
 
-	for i, target := range cfg.Targets {
-		err := addTarget(target, i, monitor)
+	targets := make([]*target, len(cfg.Targets))
+	for i, host := range cfg.Targets {
+		t := &target{
+			host:      host,
+			addresses: make([]net.IP, 0),
+			delay:     time.Duration(10*i) * time.Millisecond,
+		}
+		targets[i] = t
+
+		err := t.addOrUpdateMonitor(monitor)
 		if err != nil {
 			log.Errorln(err)
 		}
 	}
 
+	go startDNSAutoRefresh(targets, monitor)
+
 	return monitor, nil
 }
 
-func addTarget(target string, pos int, monitor *mon.Monitor) error {
-	addrs, err := net.LookupIP(target)
-	if err != nil {
-		return err
+func startDNSAutoRefresh(targets []*target, monitor *mon.Monitor) {
+	if *dnsRefresh == 0 {
+		return
 	}
 
-	for _, addr := range addrs {
-		t := fmt.Sprintf("%s %s ", target, addr)
-
-		if addr.To4() == nil {
-			t += "6"
-		} else {
-			t += "4"
+	for {
+		select {
+		case <-time.After(*dnsRefresh):
+			refreshDNS(targets, monitor)
 		}
-
-		log.Infoln("adding target", target)
-		monitor.AddTargetDelayed(t, net.IPAddr{IP: addr, Zone: ""}, 10*time.Millisecond*time.Duration(pos))
 	}
+}
 
-	return nil
+func refreshDNS(targets []*target, monitor *mon.Monitor) {
+	for _, t := range targets {
+		log.Infoln("refreshing DNS")
+
+		go func(ta *target) {
+			err := ta.addOrUpdateMonitor(monitor)
+			if err != nil {
+				log.Errorf("could refresh dns: %v", err)
+			}
+		}(t)
+	}
 }
 
 func startServer(monitor *mon.Monitor) {
