@@ -29,6 +29,7 @@ var (
 	pingInterval  = flag.Duration("ping.interval", time.Duration(5)*time.Second, "Interval for ICMP echo requests")
 	pingTimeout   = flag.Duration("ping.timeout", time.Duration(4)*time.Second, "Timeout for ICMP echo request")
 	dnsRefresh    = flag.Duration("dns.refresh", time.Duration(1)*time.Minute, "Interval for refreshing DNS records and updating targets accordingly (0 if disabled)")
+        dnsNameServer = flag.String("dns.nameserver", "", "DNS server used to resolve hostname of targets")
 )
 
 func init() {
@@ -81,13 +82,13 @@ func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
 	}
 
 	monitor := mon.New(pinger, *pingInterval, *pingTimeout)
-
 	targets := make([]*target, len(cfg.Targets))
 	for i, host := range cfg.Targets {
 		t := &target{
 			host:      host,
 			addresses: make([]net.IP, 0),
 			delay:     time.Duration(10*i) * time.Millisecond,
+                        dns:       *dnsNameServer,
 		}
 		targets[i] = t
 
