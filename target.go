@@ -1,6 +1,7 @@
 package main
 
 import (
+        "context"
 	"fmt"
 	"net"
 	"sync"
@@ -12,6 +13,7 @@ import (
 
 type target struct {
 	host      string
+        dns       string
 	addresses []net.IP
 	delay     time.Duration
 	mutex     sync.Mutex
@@ -20,6 +22,14 @@ type target struct {
 func (t *target) addOrUpdateMonitor(monitor *mon.Monitor) error {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
+
+        if (len(t.dns) > 0) {
+             dialer := func (ctx context.Context, network, address string) (net.Conn,error) {
+                 d := net.Dialer{}
+                 return d.DialContext(ctx, "udp", t.dns)
+             }
+	     net.DefaultResolver = &net.Resolver{PreferGo: true, Dial: dialer}
+        }
 
 	addrs, err := net.LookupIP(t.host)
 	if err != nil {
