@@ -13,7 +13,7 @@ import (
 
 type target struct {
 	host      string
-        dns       string
+	dns       string
 	addresses []net.IP
 	delay     time.Duration
 	mutex     sync.Mutex
