@@ -30,6 +30,7 @@ var (
 	pingTimeout   = flag.Duration("ping.timeout", time.Duration(4)*time.Second, "Timeout for ICMP echo request")
 	dnsRefresh    = flag.Duration("dns.refresh", time.Duration(1)*time.Minute, "Interval for refreshing DNS records and updating targets accordingly (0 if disabled)")
         dnsNameServer = flag.String("dns.nameserver", "", "DNS server used to resolve hostname of targets")
+        logLevel      = flag.String("log.level", "info", "Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]")
 )
 
 func init() {
@@ -46,6 +47,12 @@ func main() {
 	if *showVersion {
 		printVersion()
 		os.Exit(0)
+	}
+
+	err := log.Logger.SetLevel(log.Base(), *logLevel)
+	if err != nil {
+		log.Errorln(err)
+		os.Exit(1)
 	}
 
 	cfg, err := loadConfig()
