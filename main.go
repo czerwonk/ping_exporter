@@ -19,7 +19,7 @@ import (
 	"github.com/prometheus/common/log"
 )
 
-const version string = "0.4.2"
+const version string = "0.4.3"
 
 var (
 	showVersion   = flag.Bool("version", false, "Print version information")
@@ -29,8 +29,8 @@ var (
 	pingInterval  = flag.Duration("ping.interval", time.Duration(5)*time.Second, "Interval for ICMP echo requests")
 	pingTimeout   = flag.Duration("ping.timeout", time.Duration(4)*time.Second, "Timeout for ICMP echo request")
 	dnsRefresh    = flag.Duration("dns.refresh", time.Duration(1)*time.Minute, "Interval for refreshing DNS records and updating targets accordingly (0 if disabled)")
-        dnsNameServer = flag.String("dns.nameserver", "", "DNS server used to resolve hostname of targets")
-        logLevel      = flag.String("log.level", "info", "Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]")
+	dnsNameServer = flag.String("dns.nameserver", "", "DNS server used to resolve hostname of targets")
+	logLevel      = flag.String("log.level", "info", "Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]")
 )
 
 func init() {
@@ -95,7 +95,7 @@ func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
 			host:      host,
 			addresses: make([]net.IP, 0),
 			delay:     time.Duration(10*i) * time.Millisecond,
-                        dns:       *dnsNameServer,
+			dns:       *dnsNameServer,
 		}
 		targets[i] = t
 
