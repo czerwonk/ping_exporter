@@ -18,19 +18,19 @@ func (pinger *Pinger) receiver(proto int, conn *icmp.PacketConn) {
 
 	// read incoming packets
 	for {
-		if n, _, err := conn.ReadFrom(rb); err != nil {
+		if n, source, err := conn.ReadFrom(rb); err != nil {
 			if netErr, ok := err.(net.Error); !ok || !netErr.Temporary() {
 				break // socket gone
 			}
 		} else {
-			pinger.receive(proto, rb[:n], time.Now())
+			pinger.receive(proto, rb[:n], source.(*net.IPAddr).IP, time.Now())
 		}
 	}
 
 	// close running requests
 	pinger.mtx.RLock()
 	for _, req := range pinger.requests {
-		req.respond(errClosed, nil)
+		req.handleReply(errClosed, nil, nil)
 	}
 	pinger.mtx.RUnlock()
 
@@ -39,8 +39,8 @@ func (pinger *Pinger) receiver(proto int, conn *icmp.PacketConn) {
 }
 
 // receive takes the raw message and tries to evaluate an ICMP response.
-// If that succeedes, the body will given to process() for further processing.
-func (pinger *Pinger) receive(proto int, bytes []byte, t time.Time) {
+// If that succeeds, the body will given to process() for further processing.
+func (pinger *Pinger) receive(proto int, bytes []byte, addr net.IP, t time.Time) {
 	// parse message
 	m, err := icmp.ParseMessage(proto, bytes)
 	if err != nil {
@@ -50,7 +50,7 @@ func (pinger *Pinger) receive(proto int, bytes []byte, t time.Time) {
 	// evaluate message
 	switch m.Type {
 	case ipv4.ICMPTypeEchoReply, ipv6.ICMPTypeEchoReply:
-		pinger.process(m.Body, nil, &t)
+		pinger.process(m.Body, nil, addr, &t)
 
 	case ipv4.ICMPTypeDestinationUnreachable, ipv6.ICMPTypeDestinationUnreachable:
 		body := m.Body.(*icmp.DstUnreach)
@@ -84,13 +84,13 @@ func (pinger *Pinger) receive(proto int, bytes []byte, t time.Time) {
 		if err != nil {
 			return
 		}
-		pinger.process(msg.Body, fmt.Errorf("%s", m.Type), nil)
+		pinger.process(msg.Body, fmt.Errorf("%s", m.Type), nil, nil)
 	}
 }
 
-// process will finish a currently running Echo Request, iff the body is
+// process will finish a currently running Echo Request, if the body is
 // an ICMP Echo reply to a request from us.
-func (pinger *Pinger) process(body icmp.MessageBody, result error, tRecv *time.Time) {
+func (pinger *Pinger) process(body icmp.MessageBody, result error, addr net.IP, tRecv *time.Time) {
 	echo, ok := body.(*icmp.Echo)
 	if !ok || echo == nil {
 		if pinger.LogUnexpectedPackets {
@@ -105,11 +105,15 @@ func (pinger *Pinger) process(body icmp.MessageBody, result error, tRecv *time.T
 	}
 
 	// search for existing running echo request
-	pinger.mtx.RLock()
+	pinger.mtx.Lock()
 	req := pinger.requests[uint16(echo.Seq)]
-	pinger.mtx.RUnlock()
+	if _, ok := req.(*simpleRequest); ok {
+		// a simpleRequest is finished on the first reply
+		delete(pinger.requests, uint16(echo.Seq))
+	}
+	pinger.mtx.Unlock()
 
 	if req != nil {
-		req.respond(result, tRecv)
+		req.handleReply(result, addr, tRecv)
 	}
 }

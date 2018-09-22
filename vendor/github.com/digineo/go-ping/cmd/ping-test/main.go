@@ -12,11 +12,16 @@ import (
 )
 
 var (
+	args           []string
 	attempts       uint = 3
-	timeout        uint = 1
+	timeout             = time.Second
 	proto4, proto6 bool
 	size           uint = 56
 	bind           string
+
+	destination string
+	remoteAddr  *net.IPAddr
+	pinger      *ping.Pinger
 )
 
 func main() {
@@ -26,7 +31,7 @@ func main() {
 	}
 
 	flag.UintVar(&attempts, "attempts", attempts, "number of attempts")
-	flag.UintVar(&timeout, "timeout", timeout, "timeout in seconds for a single echo request")
+	flag.DurationVar(&timeout, "timeout", timeout, "timeout for a single echo request")
 	flag.UintVar(&size, "s", size, "size of additional payload data")
 	flag.BoolVar(&proto4, "4", proto4, "use IPv4 (mutually exclusive with -6)")
 	flag.BoolVar(&proto6, "6", proto6, "use IPv6 (mutually exclusive with -4)")
@@ -46,15 +51,13 @@ func main() {
 	}
 
 	args := flag.Args()
-
-	var pinger *ping.Pinger
-	var remote *net.IPAddr
+	destination := args[0]
 
 	if proto4 {
-		if r, err := net.ResolveIPAddr("ip4", args[0]); err != nil {
+		if r, err := net.ResolveIPAddr("ip4", destination); err != nil {
 			panic(err)
 		} else {
-			remote = r
+			remoteAddr = r
 		}
 
 		if p, err := ping.New(bind, ""); err != nil {
@@ -63,10 +66,10 @@ func main() {
 			pinger = p
 		}
 	} else if proto6 {
-		if r, err := net.ResolveIPAddr("ip6", args[0]); err != nil {
+		if r, err := net.ResolveIPAddr("ip6", destination); err != nil {
 			panic(err)
 		} else {
-			remote = r
+			remoteAddr = r
 		}
 
 		if p, err := ping.New("", bind); err != nil {
@@ -81,10 +84,35 @@ func main() {
 		pinger.SetPayloadSize(uint16(size))
 	}
 
-	if rtt, err := pinger.PingAttempts(remote, time.Second*time.Duration(timeout), int(attempts)); err == nil {
-		fmt.Printf("ping %s (%s) rtt=%v\n", args[0], remote, rtt)
+	if remoteAddr.IP.IsLinkLocalMulticast() {
+		multicastPing()
 	} else {
+		unicastPing()
+	}
+}
+
+func unicastPing() {
+	rtt, err := pinger.PingAttempts(remoteAddr, timeout, int(attempts))
+
+	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
+	}
+
+	fmt.Printf("ping %s (%s) rtt=%v\n", destination, remoteAddr, rtt)
+}
+
+func multicastPing() {
+	fmt.Printf("multicast ping to %s (%s)\n", args[0], destination)
+
+	responses, err := pinger.PingMulticast(remoteAddr, timeout)
+
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	for response := range responses {
+		fmt.Printf("%+v\n", response)
 	}
 }

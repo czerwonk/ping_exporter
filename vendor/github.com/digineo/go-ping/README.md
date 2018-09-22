@@ -1,6 +1,8 @@
 # go-ping
 
 [![GoDoc](https://godoc.org/github.com/digineo/go-ping?status.svg)](https://godoc.org/github.com/digineo/go-ping)
+[![CircleCI](https://circleci.com/gh/digineo/go-ping.svg?style=shield)](https://circleci.com/gh/digineo/go-ping)
+[![Go Report Card](https://goreportcard.com/badge/github.com/digineo/go-ping)](https://goreportcard.com/report/github.com/digineo/go-ping)
 
 A simple ICMP Echo implementation, based on [golang.org/x/net/icmp][net-icmp].
 
@@ -20,6 +22,7 @@ Some sample programs are provided in `cmd/`:
 ## Features
 
 - [x] IPv4 and IPv6 support
+- [x] Unicast and multicast support
 - [x] configurable retry amount and timeout duration
 - [x] configurable payload size (and content)
 - [x] round trip time measurement
@@ -28,6 +31,12 @@ Some sample programs are provided in `cmd/`:
 
 Simply fork and create a pull-request. We'll try to respond in a timely
 fashion.
+
+## Software using this library
+
+* [Ping Exporter for Prometheus](https://github.com/czerwonk/ping_exporter)
+
+Please create a pull request to get your software listed.
 
 ## License
 

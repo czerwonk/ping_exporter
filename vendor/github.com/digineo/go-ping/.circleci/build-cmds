@@ -1,0 +1,8 @@
+#!/bin/sh -e
+
+root=$(pwd)
+
+for dir in $(find cmd/* -maxdepth 1 -type d); do
+  cd $root/$dir
+  make
+done

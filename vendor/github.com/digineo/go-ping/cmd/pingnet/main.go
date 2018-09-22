@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -135,7 +136,16 @@ func main() {
 	for i := 0; i < poolSize; i++ {
 		go func() {
 			for ip := range ips {
-				rtt, err := pinger.PingAttempts(&ip, timeout, attempts)
+				var err error
+				var rtt time.Duration
+				for i := 1; ; i++ {
+					rtt, err = pinger.PingAttempts(&ip, timeout, attempts)
+					if err == nil || !strings.Contains(err.Error(), "no buffer space available") {
+						break
+					}
+					time.Sleep(timeout * time.Duration(i))
+				}
+
 				res <- &result{addr: ip, rtt: rtt, err: err}
 			}
 			wg.Done()

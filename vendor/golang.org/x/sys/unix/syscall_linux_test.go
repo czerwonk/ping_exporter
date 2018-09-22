@@ -17,35 +17,6 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func TestFchmodat(t *testing.T) {
-	defer chtmpdir(t)()
-
-	touch(t, "file1")
-	err := os.Symlink("file1", "symlink1")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = unix.Fchmodat(unix.AT_FDCWD, "symlink1", 0444, 0)
-	if err != nil {
-		t.Fatalf("Fchmodat: unexpected error: %v", err)
-	}
-
-	fi, err := os.Stat("file1")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if fi.Mode() != 0444 {
-		t.Errorf("Fchmodat: failed to change mode: expected %v, got %v", 0444, fi.Mode())
-	}
-
-	err = unix.Fchmodat(unix.AT_FDCWD, "symlink1", 0444, unix.AT_SYMLINK_NOFOLLOW)
-	if err != unix.EOPNOTSUPP {
-		t.Fatalf("Fchmodat: unexpected error: %v, expected EOPNOTSUPP", err)
-	}
-}
-
 func TestIoctlGetInt(t *testing.T) {
 	f, err := os.Open("/dev/random")
 	if err != nil {
@@ -62,6 +33,10 @@ func TestIoctlGetInt(t *testing.T) {
 }
 
 func TestPpoll(t *testing.T) {
+	if runtime.GOOS == "android" {
+		t.Skip("mkfifo syscall is not available on android, skipping test")
+	}
+
 	f, cleanup := mktmpfifo(t)
 	defer cleanup()
 
@@ -166,11 +141,16 @@ func TestUtimesNanoAt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Lstat: %v", err)
 	}
-	if st.Atim != ts[0] {
-		t.Errorf("UtimesNanoAt: wrong atime: %v", st.Atim)
+
+	// Only check Mtim, Atim might not be supported by the underlying filesystem
+	expected := ts[1]
+	if st.Mtim.Nsec == 0 {
+		// Some filesystems only support 1-second time stamp resolution
+		// and will always set Nsec to 0.
+		expected.Nsec = 0
 	}
-	if st.Mtim != ts[1] {
-		t.Errorf("UtimesNanoAt: wrong mtime: %v", st.Mtim)
+	if st.Mtim != expected {
+		t.Errorf("UtimesNanoAt: wrong mtime: expected %v, got %v", expected, st.Mtim)
 	}
 }
 
@@ -198,7 +178,7 @@ func TestRlimitAs(t *testing.T) {
 	// should fail. See 'man 2 getrlimit'.
 	_, err = unix.Mmap(-1, 0, 2*unix.Getpagesize(), unix.PROT_NONE, unix.MAP_ANON|unix.MAP_PRIVATE)
 	if err == nil {
-		t.Fatal("Mmap: unexpectedly suceeded after setting RLIMIT_AS")
+		t.Fatal("Mmap: unexpectedly succeeded after setting RLIMIT_AS")
 	}
 
 	err = unix.Setrlimit(unix.RLIMIT_AS, &rlim)
@@ -256,47 +236,6 @@ func TestPselect(t *testing.T) {
 	}
 }
 
-func TestFstatat(t *testing.T) {
-	defer chtmpdir(t)()
-
-	touch(t, "file1")
-
-	var st1 unix.Stat_t
-	err := unix.Stat("file1", &st1)
-	if err != nil {
-		t.Fatalf("Stat: %v", err)
-	}
-
-	var st2 unix.Stat_t
-	err = unix.Fstatat(unix.AT_FDCWD, "file1", &st2, 0)
-	if err != nil {
-		t.Fatalf("Fstatat: %v", err)
-	}
-
-	if st1 != st2 {
-		t.Errorf("Fstatat: returned stat does not match Stat")
-	}
-
-	err = os.Symlink("file1", "symlink1")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = unix.Lstat("symlink1", &st1)
-	if err != nil {
-		t.Fatalf("Lstat: %v", err)
-	}
-
-	err = unix.Fstatat(unix.AT_FDCWD, "symlink1", &st2, unix.AT_SYMLINK_NOFOLLOW)
-	if err != nil {
-		t.Fatalf("Fstatat: %v", err)
-	}
-
-	if st1 != st2 {
-		t.Errorf("Fstatat: returned stat does not match Lstat")
-	}
-}
-
 func TestSchedSetaffinity(t *testing.T) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
@@ -330,6 +269,9 @@ func TestSchedSetaffinity(t *testing.T) {
 	if runtime.NumCPU() < 2 {
 		t.Skip("skipping setaffinity tests on single CPU system")
 	}
+	if runtime.GOOS == "android" {
+		t.Skip("skipping setaffinity tests on android")
+	}
 
 	err = unix.SchedSetaffinity(0, &newMask)
 	if err != nil {
@@ -356,7 +298,7 @@ func TestSchedSetaffinity(t *testing.T) {
 func TestStatx(t *testing.T) {
 	var stx unix.Statx_t
 	err := unix.Statx(unix.AT_FDCWD, ".", 0, 0, &stx)
-	if err == unix.ENOSYS {
+	if err == unix.ENOSYS || err == unix.EPERM {
 		t.Skip("statx syscall is not available, skipping test")
 	} else if err != nil {
 		t.Fatalf("Statx: %v", err)
@@ -381,13 +323,9 @@ func TestStatx(t *testing.T) {
 		t.Errorf("Statx: returned stat mode does not match Stat")
 	}
 
-	atime := unix.StatxTimestamp{Sec: int64(st.Atim.Sec), Nsec: uint32(st.Atim.Nsec)}
 	ctime := unix.StatxTimestamp{Sec: int64(st.Ctim.Sec), Nsec: uint32(st.Ctim.Nsec)}
 	mtime := unix.StatxTimestamp{Sec: int64(st.Mtim.Sec), Nsec: uint32(st.Mtim.Nsec)}
 
-	if stx.Atime != atime {
-		t.Errorf("Statx: returned stat atime does not match Stat")
-	}
 	if stx.Ctime != ctime {
 		t.Errorf("Statx: returned stat ctime does not match Stat")
 	}
@@ -428,13 +366,9 @@ func TestStatx(t *testing.T) {
 		t.Errorf("Statx: returned stat mode does not match Lstat")
 	}
 
-	atime = unix.StatxTimestamp{Sec: int64(st.Atim.Sec), Nsec: uint32(st.Atim.Nsec)}
 	ctime = unix.StatxTimestamp{Sec: int64(st.Ctim.Sec), Nsec: uint32(st.Ctim.Nsec)}
 	mtime = unix.StatxTimestamp{Sec: int64(st.Mtim.Sec), Nsec: uint32(st.Mtim.Nsec)}
 
-	if stx.Atime != atime {
-		t.Errorf("Statx: returned stat atime does not match Lstat")
-	}
 	if stx.Ctime != ctime {
 		t.Errorf("Statx: returned stat ctime does not match Lstat")
 	}
@@ -443,36 +377,91 @@ func TestStatx(t *testing.T) {
 	}
 }
 
-// utilities taken from os/os_test.go
+// stringsFromByteSlice converts a sequence of attributes to a []string.
+// On Linux, each entry is a NULL-terminated string.
+func stringsFromByteSlice(buf []byte) []string {
+	var result []string
+	off := 0
+	for i, b := range buf {
+		if b == 0 {
+			result = append(result, string(buf[off:i]))
+			off = i + 1
+		}
+	}
+	return result
+}
 
-func touch(t *testing.T, name string) {
-	f, err := os.Create(name)
+func TestFaccessat(t *testing.T) {
+	defer chtmpdir(t)()
+	touch(t, "file1")
+
+	err := unix.Faccessat(unix.AT_FDCWD, "file1", unix.R_OK, 0)
+	if err != nil {
+		t.Errorf("Faccessat: unexpected error: %v", err)
+	}
+
+	err = unix.Faccessat(unix.AT_FDCWD, "file1", unix.R_OK, 2)
+	if err != unix.EINVAL {
+		t.Errorf("Faccessat: unexpected error: %v, want EINVAL", err)
+	}
+
+	err = unix.Faccessat(unix.AT_FDCWD, "file1", unix.R_OK, unix.AT_EACCESS)
+	if err != nil {
+		t.Errorf("Faccessat: unexpected error: %v", err)
+	}
+
+	err = os.Symlink("file1", "symlink1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := f.Close(); err != nil {
-		t.Fatal(err)
+
+	err = unix.Faccessat(unix.AT_FDCWD, "symlink1", unix.R_OK, unix.AT_SYMLINK_NOFOLLOW)
+	if err != nil {
+		t.Errorf("Faccessat SYMLINK_NOFOLLOW: unexpected error %v", err)
+	}
+
+	// We can't really test AT_SYMLINK_NOFOLLOW, because there
+	// doesn't seem to be any way to change the mode of a symlink.
+	// We don't test AT_EACCESS because such tests are only
+	// meaningful if run as root.
+
+	err = unix.Fchmodat(unix.AT_FDCWD, "file1", 0, 0)
+	if err != nil {
+		t.Errorf("Fchmodat: unexpected error %v", err)
+	}
+
+	err = unix.Faccessat(unix.AT_FDCWD, "file1", unix.F_OK, unix.AT_SYMLINK_NOFOLLOW)
+	if err != nil {
+		t.Errorf("Faccessat: unexpected error: %v", err)
+	}
+
+	err = unix.Faccessat(unix.AT_FDCWD, "file1", unix.R_OK, unix.AT_SYMLINK_NOFOLLOW)
+	if err != unix.EACCES {
+		if unix.Getuid() != 0 {
+			t.Errorf("Faccessat: unexpected error: %v, want EACCES", err)
+		}
 	}
 }
 
-// chtmpdir changes the working directory to a new temporary directory and
-// provides a cleanup function. Used when PWD is read-only.
-func chtmpdir(t *testing.T) func() {
-	oldwd, err := os.Getwd()
+func TestSyncFileRange(t *testing.T) {
+	file, err := ioutil.TempFile("", "TestSyncFileRange")
 	if err != nil {
-		t.Fatalf("chtmpdir: %v", err)
+		t.Fatal(err)
 	}
-	d, err := ioutil.TempDir("", "test")
-	if err != nil {
-		t.Fatalf("chtmpdir: %v", err)
+	defer os.Remove(file.Name())
+	defer file.Close()
+
+	err = unix.SyncFileRange(int(file.Fd()), 0, 0, 0)
+	if err == unix.ENOSYS || err == unix.EPERM {
+		t.Skip("sync_file_range syscall is not available, skipping test")
+	} else if err != nil {
+		t.Fatalf("SyncFileRange: %v", err)
 	}
-	if err := os.Chdir(d); err != nil {
-		t.Fatalf("chtmpdir: %v", err)
-	}
-	return func() {
-		if err := os.Chdir(oldwd); err != nil {
-			t.Fatalf("chtmpdir: %v", err)
-		}
-		os.RemoveAll(d)
+
+	// invalid flags
+	flags := 0xf00
+	err = unix.SyncFileRange(int(file.Fd()), 0, 0, flags)
+	if err != unix.EINVAL {
+		t.Fatalf("SyncFileRange: unexpected error: %v, want EINVAL", err)
 	}
 }

@@ -27,8 +27,8 @@ type Pinger struct {
 	payload   Payload
 	payloadMu sync.RWMutex
 
-	requests map[uint16]*request // currently running requests
-	mtx      sync.RWMutex        // lock for the requests map
+	requests map[uint16]request // currently running requests
+	mtx      sync.RWMutex       // lock for the requests map
 	id       uint16
 	conn4    *icmp.PacketConn
 	conn6    *icmp.PacketConn
@@ -62,7 +62,7 @@ func New(bind4, bind6 string) (*Pinger, error) {
 		conn4:    conn4,
 		conn6:    conn6,
 		id:       uint16(os.Getpid()),
-		requests: make(map[uint16]*request),
+		requests: make(map[uint16]request),
 	}
 	pinger.SetPayloadSize(56)
 
@@ -85,7 +85,7 @@ func (pinger *Pinger) Close() {
 	pinger.wg.Wait()
 }
 
-// connectICMP opens a new ICMP connection, iff network and address are not emtpy.
+// connectICMP opens a new ICMP connection, if network and address are not empty.
 func connectICMP(network, address string) (*icmp.PacketConn, error) {
 	if network == "" || address == "" {
 		return nil, nil
@@ -98,6 +98,12 @@ func (pinger *Pinger) close(conn *icmp.PacketConn) {
 	if conn != nil {
 		conn.Close()
 	}
+}
+
+func (pinger *Pinger) removeRequest(seq uint16) {
+	pinger.mtx.Lock()
+	delete(pinger.requests, seq)
+	pinger.mtx.Unlock()
 }
 
 // SetPayloadSize resizes additional payload data to the given size. The

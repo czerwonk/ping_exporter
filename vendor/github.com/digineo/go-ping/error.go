@@ -7,7 +7,7 @@ var (
 	errNotBound = errors.New("need at least one bind address")
 )
 
-// timeoutError implementes the net.Error interface. Originally taken from
+// timeoutError implements the net.Error interface. Originally taken from
 // https://github.com/golang/go/blob/release-branch.go1.8/src/net/net.go#L505-L509
 type timeoutError struct{}
 
