@@ -28,6 +28,7 @@ var (
 	configFile    = flag.String("config.path", "", "Path to config file")
 	pingInterval  = flag.Duration("ping.interval", time.Duration(5)*time.Second, "Interval for ICMP echo requests")
 	pingTimeout   = flag.Duration("ping.timeout", time.Duration(4)*time.Second, "Timeout for ICMP echo request")
+	historySize   = flag.Int("ping.history-size", 10, "Number of results to remember per target")
 	dnsRefresh    = flag.Duration("dns.refresh", time.Duration(1)*time.Minute, "Interval for refreshing DNS records and updating targets accordingly (0 if disabled)")
 	dnsNameServer = flag.String("dns.nameserver", "", "DNS server used to resolve hostname of targets")
 	logLevel      = flag.String("log.level", "info", "Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]")
@@ -46,6 +47,11 @@ func main() {
 
 	if *showVersion {
 		printVersion()
+		os.Exit(0)
+	}
+
+	if *historySize < 1 {
+		fmt.Println("ping.history-size must be greater than 0")
 		os.Exit(0)
 	}
 
@@ -89,6 +95,7 @@ func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
 	}
 
 	monitor := mon.New(pinger, *pingInterval, *pingTimeout)
+	monitor.HistorySize = *historySize
 	targets := make([]*target, len(cfg.Targets))
 	for i, host := range cfg.Targets {
 		t := &target{
