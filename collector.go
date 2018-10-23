@@ -50,8 +50,7 @@ func (p *pingCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	for target, metrics := range p.metrics {
-		t := strings.Split(target, " ")
-		l := []string{t[0], t[1], t[2]}
+		l := strings.SplitN(target, " ", 2)
 
 		ch <- prometheus.MustNewConstMetric(rttDesc, prometheus.GaugeValue, float64(metrics.Best), append(l, "best")...)
 		ch <- prometheus.MustNewConstMetric(bestDesc, prometheus.GaugeValue, float64(metrics.Best), l...)
