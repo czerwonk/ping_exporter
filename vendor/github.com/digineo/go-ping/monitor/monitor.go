@@ -10,6 +10,8 @@ import (
 
 // Monitor manages the goroutines responsible for collecting Ping RTT data.
 type Monitor struct {
+	HistorySize int // Number of results per target to keep
+
 	pinger   *ping.Pinger
 	interval time.Duration
 	targets  map[string]*Target
@@ -17,14 +19,17 @@ type Monitor struct {
 	timeout  time.Duration
 }
 
+const defaultHistorySize = 10
+
 // New creates and configures a new Ping instance. You need to call
 // AddTarget()/RemoveTarget() to manage monitored targets.
 func New(pinger *ping.Pinger, interval, timeout time.Duration) *Monitor {
 	return &Monitor{
-		pinger:   pinger,
-		interval: interval,
-		timeout:  timeout,
-		targets:  make(map[string]*Target),
+		pinger:      pinger,
+		interval:    interval,
+		timeout:     timeout,
+		targets:     make(map[string]*Target),
+		HistorySize: defaultHistorySize,
 	}
 }
 
@@ -50,7 +55,7 @@ func (p *Monitor) AddTargetDelayed(key string, addr net.IPAddr, startupDelay tim
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 
-	target, err := newTarget(p.interval, p.timeout, startupDelay, p.pinger, addr)
+	target, err := newTarget(p.interval, p.timeout, startupDelay, p.HistorySize, p.pinger, addr)
 	if err != nil {
 		return err
 	}
@@ -77,16 +82,25 @@ func (p *Monitor) removeTarget(key string) {
 	delete(p.targets, key)
 }
 
-// ExportAndClear calculates the metrics for each monitored target and returns it
-// as a simple map.
+// ExportAndClear calculates the metrics for each monitored target, cleans the result set and
+// returns it as a simple map.
 func (p *Monitor) ExportAndClear() map[string]*Metrics {
+	return p.export(true)
+}
+
+// Export calculates the metrics for each monitored target and returns it as a simple map.
+func (p *Monitor) Export() map[string]*Metrics {
+	return p.export(false)
+}
+
+func (p *Monitor) export(clear bool) map[string]*Metrics {
 	m := make(map[string]*Metrics)
 
 	p.mtx.RLock()
 	defer p.mtx.RUnlock()
 
 	for id, target := range p.targets {
-		if metrics := target.ComputeAndClear(); metrics != nil {
+		if metrics := target.Compute(clear); metrics != nil {
 			m[id] = metrics
 		}
 	}

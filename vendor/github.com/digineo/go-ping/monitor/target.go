@@ -20,13 +20,14 @@ type Target struct {
 }
 
 // newTarget starts a new monitoring goroutine
-func newTarget(interval, timeout, startupDelay time.Duration, pinger *ping.Pinger, addr net.IPAddr) (*Target, error) {
+func newTarget(interval, timeout, startupDelay time.Duration, historySize int, pinger *ping.Pinger, addr net.IPAddr) (*Target, error) {
 	n := &Target{
 		pinger:   pinger,
 		addr:     addr,
 		interval: interval,
 		timeout:  timeout,
 		stop:     make(chan struct{}),
+		history:  NewHistory(historySize),
 	}
 	n.wg.Add(1)
 	go n.run(startupDelay)
@@ -60,9 +61,12 @@ func (n *Target) Stop() {
 	n.wg.Wait()
 }
 
-// ComputeAndClear returns the computed ping metrics for this node and clears the result set.
-func (n *Target) ComputeAndClear() *Metrics {
-	return n.history.ComputeAndClear()
+// Compute returns the computed ping metrics for this node and optonally clears the result set.
+func (n *Target) Compute(clear bool) *Metrics {
+	if clear {
+		return n.history.ComputeAndClear()
+	}
+	return n.history.Compute()
 }
 
 func (n *Target) ping() {
