@@ -39,7 +39,7 @@ func (p *pingCollector) Collect(ch chan<- prometheus.Metric) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	metrics := p.monitor.ExportAndClear()
+	metrics := p.monitor.Export()
 
 	if len(metrics) > 0 {
 		p.metrics = metrics
