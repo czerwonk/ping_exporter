@@ -50,7 +50,7 @@ func (p *pingCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	for target, metrics := range p.metrics {
-		l := strings.SplitN(target, " ", 2)
+		l := strings.SplitN(target, " ", 3)
 
 		if metrics.PacketsSent > metrics.PacketsLost {
 			ch <- prometheus.MustNewConstMetric(rttDesc, prometheus.GaugeValue, float64(metrics.Best), append(l, "best")...)
