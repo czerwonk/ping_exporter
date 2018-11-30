@@ -1,4 +1,4 @@
-module github.com/jaxxstorm/ping_exporter
+module github.com/czerwonk/ping_exporter
 
 require (
 	github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc
