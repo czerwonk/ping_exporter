@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -27,12 +26,13 @@ var (
 	listenAddress = kingpin.Flag("web.listen-address", "Address on which to expose metrics and web interface").Default(":9427").String()
 	metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics").Default("/metrics").String()
 	configFile    = kingpin.Flag("config.path", "Path to config file").Default("").String()
-	pingInterval  = flag.Duration("ping.interval", time.Duration(5)*time.Second, "Interval for ICMP echo requests")
-	pingTimeout   = flag.Duration("ping.timeout", time.Duration(4)*time.Second, "Timeout for ICMP echo request")
+	pingInterval  = kingpin.Flag("ping.interval", "Interval for ICMP echo requests").Default("5s").Duration()
+	pingTimeout   = kingpin.Flag("ping.timeout", "Timeout for ICMP echo request").Default("4s").Duration()
 	historySize   = kingpin.Flag("ping.history-size", "Number of results to remember per target").Default("10").Int()
-	dnsRefresh    = flag.Duration("dns.refresh", time.Duration(1)*time.Minute, "Interval for refreshing DNS records and updating targets accordingly (0 if disabled)")
+	dnsRefresh    = kingpin.Flag("dns.refresh", "Interval for refreshing DNS records and updating targets accordingly (0 if disabled)").Default("1m").Duration()
 	dnsNameServer = kingpin.Flag("dns.nameserver", "DNS server used to resolve hostname of targets").Default("").String()
 	logLevel      = kingpin.Flag("log.level", "Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]").Default("info").String()
+	targets       = kingpin.Arg("targets", "A list of targets to ping").Strings()
 )
 
 func init() {
@@ -165,7 +165,7 @@ func startServer(monitor *mon.Monitor) {
 
 func loadConfig() (*config.Config, error) {
 	if *configFile == "" {
-		return &config.Config{Targets: flag.Args()}, nil
+		return &config.Config{Targets: *targets}, nil
 	}
 
 	b, err := ioutil.ReadFile(*configFile)
