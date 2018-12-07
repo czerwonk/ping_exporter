@@ -1,0 +1,42 @@
+dist: artifacts
+before:
+   hooks:
+     # you may remove this if you don't use vgo
+     - go mod download
+builds:
+  -
+    env:
+    - CGO_ENABLED=0
+    goos:
+    - linux
+    - darwin
+    goarch:
+    - amd64
+    main: .
+    ldflags: -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+    binary: ping_exporter
+archive:
+  format: tar.gz
+  name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
+  replacements:
+    darwin: Darwin
+    linux: Linux
+    amd64: x86_64
+snapshot:
+  name_template: SNAPSHOT-{{ .Commit }}
+nfpm:
+  vendor: Daniel Czerwonk
+  homepage: "https://github.com/czerwonk/ping_exporter"
+  maintainer: Daniel Czerwonk
+  description: "Ping prometheus exporter"
+  license: MIT
+  formats:
+    - rpm
+    - deb
+  bindir: /usr/bin
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'

@@ -4,7 +4,6 @@ require (
 	github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc
 	github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf
 	github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973
-	github.com/czerwonk/ping_exporter v0.0.0-20181111181321-eed8f09ace8b
 	github.com/digineo/go-ping v0.0.0-20181023230134-8e2c4a96fb5c
 	github.com/golang/protobuf v1.2.0
 	github.com/matttproud/golang_protobuf_extensions v1.0.1

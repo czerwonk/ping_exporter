@@ -1,3 +1,4 @@
 .idea
 *.iml
 ping_exporter
+artifacts
