@@ -34,7 +34,7 @@ To run the exporter:
 ```
 or
 ```bash
-./ping_exporter -config.path my-config-file [options]
+./ping_exporter --config.path my-config-file [options]
 ```
 
 Help on flags:
