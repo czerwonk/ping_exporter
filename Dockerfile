@@ -8,5 +8,5 @@ ENV CONFIG_FILE "/config"
 RUN apk --no-cache add ca-certificates
 WORKDIR /app
 COPY --from=builder /go/src/github.com/czerwonk/ping_exporter/app ping_exporter
-CMD ./ping_exporter -config.path $CONFIG_FILE
+CMD ./ping_exporter --config.path $CONFIG_FILE
 EXPOSE 9427
