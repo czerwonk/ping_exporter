@@ -2,11 +2,13 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/czerwonk/ping_exporter/config"
@@ -40,7 +42,6 @@ func init() {
 }
 
 func main() {
-
 	if *showVersion {
 		printVersion()
 		os.Exit(0)
@@ -84,6 +85,7 @@ func printVersion() {
 }
 
 func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
+	resolver := setupResolver()
 	pinger, err := ping.New("0.0.0.0", "::")
 	if err != nil {
 		return nil, err
@@ -95,9 +97,9 @@ func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
 	for i, host := range cfg.Targets {
 		t := &target{
 			host:      host,
-			addresses: make([]net.IP, 0),
+			addresses: make([]net.IPAddr, 0),
 			delay:     time.Duration(10*i) * time.Millisecond,
-			dns:       *dnsNameServer,
+			resolver:  resolver,
 		}
 		targets[i] = t
 
@@ -174,4 +176,20 @@ func loadConfig() (*config.Config, error) {
 	}
 
 	return config.FromYAML(bytes.NewReader(b))
+}
+
+func setupResolver() *net.Resolver {
+	if *dnsNameServer == "" {
+		return net.DefaultResolver
+	}
+
+	srv := *dnsNameServer
+	if !strings.HasSuffix(srv, ":53") {
+		srv += ":53"
+	}
+	dialer := func(ctx context.Context, network, address string) (net.Conn, error) {
+		d := net.Dialer{}
+		return d.DialContext(ctx, "udp", srv)
+	}
+	return &net.Resolver{PreferGo: true, Dial: dialer}
 }
