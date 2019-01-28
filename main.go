@@ -71,6 +71,15 @@ func main() {
 		kingpin.FatalUsage("metrics.deprecated must be `enable` or `disable`")
 	}
 
+	if mpath := *metricsPath; mpath == "" {
+		log.Warnln("web.telemetry-path is empty, correcting to `/metrics`")
+		mpath = "/metrics"
+		metricsPath = &mpath
+	} else if mpath[0] != '/' {
+		mpath = "/" + mpath
+		metricsPath = &mpath
+	}
+
 	cfg, err := loadConfig()
 	if err != nil {
 		log.Errorln(err)
@@ -168,7 +177,7 @@ func startServer(monitor *mon.Monitor) {
 	h := promhttp.HandlerFor(reg, promhttp.HandlerOpts{
 		ErrorLog:      log.NewErrorLogger(),
 		ErrorHandling: promhttp.ContinueOnError})
-	http.HandleFunc("/metrics", h.ServeHTTP)
+	http.Handle(*metricsPath, h)
 
 	log.Infof("Listening for %s on %s", *metricsPath, *listenAddress)
 	log.Fatal(http.ListenAndServe(*listenAddress, nil))
