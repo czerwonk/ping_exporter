@@ -50,10 +50,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	if *historySize < 1 {
-		kingpin.FatalUsage("ping.history-size must be greater than 0")
-	}
-
 	err := log.Logger.SetLevel(log.Base(), *logLevel)
 	if err != nil {
 		log.Errorln(err)
@@ -80,8 +76,11 @@ func main() {
 
 	cfg, err := loadConfig()
 	if err != nil {
-		log.Errorln(err)
-		os.Exit(1)
+		kingpin.FatalUsage("could not load config.path: %v", err)
+	}
+
+	if cfg.Ping.History < 1 {
+		kingpin.FatalUsage("ping.history-size must be greater than 0")
 	}
 
 	if len(cfg.Targets) == 0 {
@@ -105,14 +104,17 @@ func printVersion() {
 }
 
 func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
-	resolver := setupResolver()
+	resolver := setupResolver(cfg)
 	pinger, err := ping.New("0.0.0.0", "::")
 	if err != nil {
 		return nil, err
 	}
 
-	monitor := mon.New(pinger, *pingInterval, *pingTimeout)
-	monitor.HistorySize = *historySize
+	monitor := mon.New(pinger,
+		cfg.Ping.Interval.Duration(),
+		cfg.Ping.Timeout.Duration())
+	monitor.HistorySize = cfg.Ping.History
+
 	targets := make([]*target, len(cfg.Targets))
 	for i, host := range cfg.Targets {
 		t := &target{
@@ -129,17 +131,17 @@ func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
 		}
 	}
 
-	go startDNSAutoRefresh(targets, monitor)
+	go startDNSAutoRefresh(cfg.DNS.Refresh.Duration(), targets, monitor)
 
 	return monitor, nil
 }
 
-func startDNSAutoRefresh(targets []*target, monitor *mon.Monitor) {
-	if *dnsRefresh == 0 {
+func startDNSAutoRefresh(interval time.Duration, targets []*target, monitor *mon.Monitor) {
+	if interval <= 0 {
 		return
 	}
 
-	for range time.NewTicker(*dnsRefresh).C {
+	for range time.NewTicker(interval).C {
 		refreshDNS(targets, monitor)
 	}
 }
@@ -175,7 +177,9 @@ func startServer(monitor *mon.Monitor) {
 
 func loadConfig() (*config.Config, error) {
 	if *configFile == "" {
-		return &config.Config{Targets: *targets}, nil
+		cfg := config.Config{}
+		addFlagToConfig(&cfg)
+		return &cfg, nil
 	}
 
 	f, err := os.Open(*configFile)
@@ -183,23 +187,50 @@ func loadConfig() (*config.Config, error) {
 		return nil, err
 	}
 	defer f.Close()
-	return config.FromYAML(f)
+
+	cfg, err := config.FromYAML(f)
+	if err != nil {
+		addFlagToConfig(cfg)
+	}
+	return cfg, err
 }
 
-func setupResolver() *net.Resolver {
-	if *dnsNameServer == "" {
+func setupResolver(cfg *config.Config) *net.Resolver {
+	if cfg.DNS.Nameserver == "" {
 		return net.DefaultResolver
 	}
 
-	srv := *dnsNameServer
-	if !strings.HasSuffix(srv, ":53") {
-		srv += ":53"
+	if !strings.HasSuffix(cfg.DNS.Nameserver, ":53") {
+		cfg.DNS.Nameserver += ":53"
 	}
 	dialer := func(ctx context.Context, network, address string) (net.Conn, error) {
 		d := net.Dialer{}
-		return d.DialContext(ctx, "udp", srv)
+		return d.DialContext(ctx, "udp", cfg.DNS.Nameserver)
 	}
 	return &net.Resolver{PreferGo: true, Dial: dialer}
+}
+
+// addFlagToConfig updates cfg with command line flag values, unless the
+// config has non-zero values.
+func addFlagToConfig(cfg *config.Config) {
+	if len(cfg.Targets) == 0 {
+		cfg.Targets = *targets
+	}
+	if cfg.Ping.History == 0 {
+		cfg.Ping.History = *historySize
+	}
+	if cfg.Ping.Interval == 0 {
+		cfg.Ping.Interval.Set(*pingInterval)
+	}
+	if cfg.Ping.Timeout == 0 {
+		cfg.Ping.Timeout.Set(*pingTimeout)
+	}
+	if cfg.DNS.Refresh == 0 {
+		cfg.DNS.Refresh.Set(*dnsRefresh)
+	}
+	if cfg.DNS.Nameserver == "" {
+		cfg.DNS.Nameserver = *dnsNameServer
+	}
 }
 
 const indexHTML = `<!doctype html>
