@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -180,12 +178,12 @@ func loadConfig() (*config.Config, error) {
 		return &config.Config{Targets: *targets}, nil
 	}
 
-	b, err := ioutil.ReadFile(*configFile)
+	f, err := os.Open(*configFile)
 	if err != nil {
 		return nil, err
 	}
-
-	return config.FromYAML(bytes.NewReader(b))
+	defer f.Close()
+	return config.FromYAML(f)
 }
 
 func setupResolver() *net.Resolver {
