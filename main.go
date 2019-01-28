@@ -132,18 +132,14 @@ func startDNSAutoRefresh(targets []*target, monitor *mon.Monitor) {
 		return
 	}
 
-	for {
-		select {
-		case <-time.After(*dnsRefresh):
-			refreshDNS(targets, monitor)
-		}
+	for range time.NewTicker(*dnsRefresh).C {
+		refreshDNS(targets, monitor)
 	}
 }
 
 func refreshDNS(targets []*target, monitor *mon.Monitor) {
+	log.Infoln("refreshing DNS")
 	for _, t := range targets {
-		log.Infoln("refreshing DNS")
-
 		go func(ta *target) {
 			err := ta.addOrUpdateMonitor(monitor)
 			if err != nil {
