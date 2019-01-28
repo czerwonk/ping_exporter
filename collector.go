@@ -18,6 +18,7 @@ var (
 	meanDesc   = prometheus.NewDesc(prefix+"rtt_mean_ms", "Mean round trip time in millis", labelNames, nil)
 	stddevDesc = prometheus.NewDesc(prefix+"rtt_std_deviation_ms", "Standard deviation in millis", labelNames, nil)
 	lossDesc   = prometheus.NewDesc(prefix+"loss_percent", "Packet loss in percent", labelNames, nil)
+	progDesc   = prometheus.NewDesc(prefix+"up", "ping_exporter version", nil, prometheus.Labels{"version": version})
 	mutex      = &sync.Mutex{}
 )
 
@@ -35,6 +36,7 @@ func (p *pingCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- worstDesc
 	ch <- meanDesc
 	ch <- stddevDesc
+	ch <- progDesc
 }
 
 func (p *pingCollector) Collect(ch chan<- prometheus.Metric) {
@@ -44,6 +46,8 @@ func (p *pingCollector) Collect(ch chan<- prometheus.Metric) {
 	if m := p.monitor.Export(); len(m) > 0 {
 		p.metrics = m
 	}
+
+	ch <- prometheus.MustNewConstMetric(progDesc, prometheus.GaugeValue, 1)
 
 	for target, metrics := range p.metrics {
 		l := strings.SplitN(target, " ", 3)

@@ -49,6 +49,9 @@ Each metric has labels `ip` (the target's IP address), `ip_version`
 (4 or 6, corresponding to the IP version), and `target` (the target's
 name).
 
+Additionally, a `ping_up` metric reports whether the exporter
+is running (and in which version).
+
 #### Deprecated metrics
 
 - `ping_rtt_ms`: Round trip trim in millis
