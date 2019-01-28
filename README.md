@@ -23,30 +23,44 @@ targets:
   - 8.8.4.4
   - 2001:4860:4860::8888
   - 2001:4860:4860::8844
+  - google.com
+```
+
+Note: domains are resolved (regularly) to their corresponding A and AAAA
+records (IPv4 and IPv6). By default, `ping_exporter` uses the system
+resolver to translate domain names to IP addresses. You can override the
+resolver address by specifying the `--dns.nameserver` flag when starting
+the binary, e.g.
+
+```console
+$ # use Cloudflare's public DNS server
+$ ./ping_exporter --dns.nameserver=1.1.1.1:53 [other options]
 ```
 
 ### Shell
 
 To run the exporter:
 
-```bash
-./ping_exporter [options] target1 target2 ...
+```console
+$ ./ping_exporter [options] target1 target2 ...
 ```
+
 or
-```bash
-./ping_exporter --config.path my-config-file [options]
+
+```console
+$ ./ping_exporter --config.path my-config-file [options]
 ```
 
 Help on flags:
 
-```bash
-./ping_exporter --help
+```console
+$ ./ping_exporter --help
 ```
 
 Getting the results for testing via cURL:
 
-```bash
-curl http://localhost:9427/metrics
+```console
+$ curl http://localhost:9427/metrics
 ```
 
 ### Docker
@@ -55,8 +69,8 @@ https://hub.docker.com/r/czerwonk/ping_exporter
 
 To run the ping_exporter as a Docker container, run:
 
-```bash
-docker run -p 9427:9427 -v ./config:/config:ro --name ping_exporter czerwonk/ping_exporter
+```console
+$ docker run -p 9427:9427 -v ./config:/config:ro --name ping_exporter czerwonk/ping_exporter
 ```
 
 
@@ -66,6 +80,6 @@ Simply fork and create a pull-request. We'll try to respond in a timely fashion.
 
 ## License
 
-MIT License, Copyright (c) 2018  
-Philip Berndroth [pberndro](https://twitter.com/pberndro)  
+MIT License, Copyright (c) 2018
+Philip Berndroth [pberndro](https://twitter.com/pberndro)
 Daniel Czerwonk [dan_nrw](https://twitter.com/dan_nrw)
