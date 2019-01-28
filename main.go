@@ -53,8 +53,7 @@ func main() {
 	}
 
 	if *historySize < 1 {
-		fmt.Println("ping.history-size must be greater than 0")
-		os.Exit(0)
+		kingpin.FatalUsage("ping.history-size must be greater than 0")
 	}
 
 	err := log.Logger.SetLevel(log.Base(), *logLevel)
