@@ -39,14 +39,8 @@ func (p *pingCollector) Collect(ch chan<- prometheus.Metric) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	metrics := p.monitor.Export()
-
-	if len(metrics) > 0 {
-		p.metrics = metrics
-	}
-
-	if p.metrics == nil || len(p.metrics) == 0 {
-		return
+	if m := p.monitor.Export(); len(m) > 0 {
+		p.metrics = m
 	}
 
 	for target, metrics := range p.metrics {
