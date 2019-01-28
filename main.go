@@ -161,15 +161,7 @@ func refreshDNS(targets []*target, monitor *mon.Monitor) {
 func startServer(monitor *mon.Monitor) {
 	log.Infof("Starting ping exporter (Version: %s)", version)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<html>
-			<head><title>ping Exporter (Version ` + version + `)</title></head>
-			<body>
-			<h1>ping Exporter</h1>
-			<p><a href="` + *metricsPath + `">Metrics</a></p>
-			<h2>More information:</h2>
-			<p><a href="https://github.com/czerwonk/ping_exporter">github.com/czerwonk/ping_exporter</a></p>
-			</body>
-			</html>`))
+		fmt.Fprintf(w, indexHTML, *metricsPath)
 	})
 
 	reg := prometheus.NewRegistry()
@@ -211,3 +203,18 @@ func setupResolver() *net.Resolver {
 	}
 	return &net.Resolver{PreferGo: true, Dial: dialer}
 }
+
+const indexHTML = `<!doctype html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>ping Exporter (Version ` + version + `)</title>
+</head>
+<body>
+	<h1>ping Exporter</h1>
+	<p><a href="%s">Metrics</a></p>
+	<h2>More information:</h2>
+	<p><a href="https://github.com/czerwonk/ping_exporter">github.com/czerwonk/ping_exporter</a></p>
+</body>
+</html>
+`
