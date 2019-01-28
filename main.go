@@ -37,6 +37,11 @@ var (
 	targets       = kingpin.Arg("targets", "A list of targets to ping").Strings()
 )
 
+var (
+	enableDeprecatedMetrics = true // default may change in future
+	deprecatedMetrics       = kingpin.Flag("metrics.deprecated", "Enable or disable deprecated metrics (`ping_rtt_ms{type=best|worst|mean|std_dev}`). Valid choices: [enable, disable]").Default("enable").String()
+)
+
 func init() {
 	kingpin.Parse()
 }
@@ -56,6 +61,15 @@ func main() {
 	if err != nil {
 		log.Errorln(err)
 		os.Exit(1)
+	}
+
+	switch *deprecatedMetrics {
+	case "enable":
+		enableDeprecatedMetrics = true
+	case "disable":
+		enableDeprecatedMetrics = false
+	default:
+		kingpin.FatalUsage("metrics.deprecated must be `enable` or `disable`")
 	}
 
 	cfg, err := loadConfig()

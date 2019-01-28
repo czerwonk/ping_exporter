@@ -27,7 +27,9 @@ type pingCollector struct {
 }
 
 func (p *pingCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- rttDesc
+	if enableDeprecatedMetrics {
+		ch <- rttDesc
+	}
 	ch <- lossDesc
 	ch <- bestDesc
 	ch <- worstDesc
@@ -47,16 +49,16 @@ func (p *pingCollector) Collect(ch chan<- prometheus.Metric) {
 		l := strings.SplitN(target, " ", 3)
 
 		if metrics.PacketsSent > metrics.PacketsLost {
-			ch <- prometheus.MustNewConstMetric(rttDesc, prometheus.GaugeValue, float64(metrics.Best), append(l, "best")...)
+			if enableDeprecatedMetrics {
+				ch <- prometheus.MustNewConstMetric(rttDesc, prometheus.GaugeValue, float64(metrics.Best), append(l, "best")...)
+				ch <- prometheus.MustNewConstMetric(rttDesc, prometheus.GaugeValue, float64(metrics.Worst), append(l, "worst")...)
+				ch <- prometheus.MustNewConstMetric(rttDesc, prometheus.GaugeValue, float64(metrics.Mean), append(l, "mean")...)
+				ch <- prometheus.MustNewConstMetric(rttDesc, prometheus.GaugeValue, float64(metrics.StdDev), append(l, "std_dev")...)
+			}
+
 			ch <- prometheus.MustNewConstMetric(bestDesc, prometheus.GaugeValue, float64(metrics.Best), l...)
-
-			ch <- prometheus.MustNewConstMetric(rttDesc, prometheus.GaugeValue, float64(metrics.Worst), append(l, "worst")...)
 			ch <- prometheus.MustNewConstMetric(worstDesc, prometheus.GaugeValue, float64(metrics.Worst), l...)
-
-			ch <- prometheus.MustNewConstMetric(rttDesc, prometheus.GaugeValue, float64(metrics.Mean), append(l, "mean")...)
 			ch <- prometheus.MustNewConstMetric(meanDesc, prometheus.GaugeValue, float64(metrics.Mean), l...)
-
-			ch <- prometheus.MustNewConstMetric(rttDesc, prometheus.GaugeValue, float64(metrics.StdDev), append(l, "std_dev")...)
 			ch <- prometheus.MustNewConstMetric(stddevDesc, prometheus.GaugeValue, float64(metrics.StdDev), l...)
 		}
 

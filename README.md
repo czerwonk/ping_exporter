@@ -37,6 +37,42 @@ $ # use Cloudflare's public DNS server
 $ ./ping_exporter --dns.nameserver=1.1.1.1:53 [other options]
 ```
 
+### Exported metrics
+
+- `ping_rtt_best_ms`:          Best round trip time in millis
+- `ping_rtt_worst_ms`:         Worst round trip time in millis
+- `ping_rtt_mean_ms`:          Mean round trip time in millis
+- `ping_rtt_std_deviation_ms`: Standard deviation in millis
+- `ping_loss_percent`:         Packet loss in percent
+
+Each metric has labels `ip` (the target's IP address), `ip_version`
+(4 or 6, corresponding to the IP version), and `target` (the target's
+name).
+
+#### Deprecated metrics
+
+- `ping_rtt_ms`: Round trip trim in millis
+
+This metric has a label `type` with one of the following values:
+
+- `best` denotes best round trip time
+- `worst` denotes worst round trip time
+- `mean` denotes mean round trip time
+- `std_dev` denotes standard deviation
+
+These metrics are exported by default, but this may change with a future
+release of this exporter.
+
+To ensure forward- or backward compatability, use the `--metrics.deprecated`
+flag:
+
+```console
+$ # also export deprecated metrics
+$ ./ping_exporter --metrics.deprecated=enable [other options]
+$ # or omit deprecated metrics
+$ ./ping_exporter --metrics.deprecated=disable [other options]
+```
+
 ### Shell
 
 To run the exporter:
