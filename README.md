@@ -39,11 +39,11 @@ $ ./ping_exporter --dns.nameserver=1.1.1.1:53 [other options]
 
 ### Exported metrics
 
-- `ping_rtt_best_ms`:          Best round trip time in millis
-- `ping_rtt_worst_ms`:         Worst round trip time in millis
-- `ping_rtt_mean_ms`:          Mean round trip time in millis
-- `ping_rtt_std_deviation_ms`: Standard deviation in millis
-- `ping_loss_percent`:         Packet loss in percent
+- `ping_rtt_best_seconds`:          Best round trip time in seconds
+- `ping_rtt_worst_seconds`:         Worst round trip time in seconds
+- `ping_rtt_mean_seconds`:          Mean round trip time in seconds
+- `ping_rtt_std_deviation_seconds`: Standard deviation in seconds
+- `ping_loss_percent`:              Packet loss in percent
 
 Each metric has labels `ip` (the target's IP address), `ip_version`
 (4 or 6, corresponding to the IP version), and `target` (the target's
