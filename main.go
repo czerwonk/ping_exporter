@@ -84,8 +84,8 @@ func main() {
 		kingpin.FatalUsage("ping.history-size must be greater than 0")
 	}
 
-	if cfg.Ping.Size < 0 {
-		kingpin.FatalUsage("ping.size must be greater than on equal to 0")
+	if cfg.Ping.Size < 0 || cfg.Ping.Size > 65500 {
+		kingpin.FatalUsage("ping.size must be between 0 and 65500")
 	}
 
 	if len(cfg.Targets) == 0 {
