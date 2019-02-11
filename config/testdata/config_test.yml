@@ -13,3 +13,4 @@ ping:
   interval: 2s
   timeout: 3s
   history-size: 42
+  payload-size: 120

@@ -1,4 +1,5 @@
 .idea
 *.iml
 ping_exporter
+ping_exporter.exe
 artifacts

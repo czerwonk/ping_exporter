@@ -15,6 +15,7 @@ type Config struct {
 		Interval duration `yaml:"interval"`
 		Timeout  duration `yaml:"timeout"`
 		History  int      `yaml:"history-size"`
+		Size     uint16   `yaml:"payload-size"`
 	} `yaml:"ping"`
 
 	DNS struct {
