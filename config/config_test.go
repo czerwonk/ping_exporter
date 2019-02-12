@@ -49,5 +49,8 @@ func TestParseConfig(t *testing.T) {
 	if expected := 42; c.Ping.History != expected {
 		t.Errorf("expected ping.history-size to be %d, got %d", expected, c.Ping.History)
 	}
+	if expected := 120; c.Ping.Size != uint16(expected) {
+		t.Errorf("expected ping.payload-size to be %d, got %d", expected, c.Ping.Size)
+	}
 
 }

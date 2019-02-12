@@ -28,6 +28,7 @@ var (
 	configFile    = kingpin.Flag("config.path", "Path to config file").Default("").String()
 	pingInterval  = kingpin.Flag("ping.interval", "Interval for ICMP echo requests").Default("5s").Duration()
 	pingTimeout   = kingpin.Flag("ping.timeout", "Timeout for ICMP echo request").Default("4s").Duration()
+	pingSize      = kingpin.Flag("ping.size", "Payload size for ICMP echo requests").Default("56").Uint16()
 	historySize   = kingpin.Flag("ping.history-size", "Number of results to remember per target").Default("10").Int()
 	dnsRefresh    = kingpin.Flag("dns.refresh", "Interval for refreshing DNS records and updating targets accordingly (0 if disabled)").Default("1m").Duration()
 	dnsNameServer = kingpin.Flag("dns.nameserver", "DNS server used to resolve hostname of targets").Default("").String()
@@ -83,6 +84,10 @@ func main() {
 		kingpin.FatalUsage("ping.history-size must be greater than 0")
 	}
 
+	if cfg.Ping.Size < 0 || cfg.Ping.Size > 65500 {
+		kingpin.FatalUsage("ping.size must be between 0 and 65500")
+	}
+
 	if len(cfg.Targets) == 0 {
 		kingpin.FatalUsage("No targets specified")
 	}
@@ -108,6 +113,10 @@ func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
 	pinger, err := ping.New("0.0.0.0", "::")
 	if err != nil {
 		return nil, err
+	}
+
+	if pinger.PayloadSize() != cfg.Ping.Size {
+		pinger.SetPayloadSize(cfg.Ping.Size)
 	}
 
 	monitor := mon.New(pinger,
@@ -224,6 +233,9 @@ func addFlagToConfig(cfg *config.Config) {
 	}
 	if cfg.Ping.Timeout == 0 {
 		cfg.Ping.Timeout.Set(*pingTimeout)
+	}
+	if cfg.Ping.Size == 0 {
+		cfg.Ping.Size = *pingSize
 	}
 	if cfg.DNS.Refresh == 0 {
 		cfg.DNS.Refresh.Set(*dnsRefresh)
