@@ -209,7 +209,7 @@ func loadConfig() (*config.Config, error) {
 	defer f.Close()
 
 	cfg, err := config.FromYAML(f)
-	if err != nil {
+	if err == nil {
 		addFlagToConfig(cfg)
 	}
 	return cfg, err
