@@ -110,7 +110,18 @@ func printVersion() {
 
 func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
 	resolver := setupResolver(cfg)
-	pinger, err := ping.New("0.0.0.0", "::")
+	var bind4,bind6 string
+	if ln, err := net.Listen("tcp4", "127.0.0.1:0"); err == nil {
+                //ipv4 enabled
+		ln.Close()
+		bind4 = "0.0.0.0"
+	}
+	if ln, err := net.Listen("tcp6", "[::1]:0"); err == nil {
+		//ipv6 enabled
+		ln.Close()
+		bind6 = "::"
+	}
+	pinger, err := ping.New(bind4, bind6)
 	if err != nil {
 		return nil, err
 	}
