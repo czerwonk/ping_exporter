@@ -24,6 +24,16 @@ targets:
   - 2001:4860:4860::8888
   - 2001:4860:4860::8844
   - google.com
+  
+dns:
+  refresh: 2m15s
+  nameserver: 1.1.1.1
+
+ping:
+  interval: 2s
+  timeout: 3s
+  history-size: 42
+  payload-size: 120
 ```
 
 Note: domains are resolved (regularly) to their corresponding A and AAAA
