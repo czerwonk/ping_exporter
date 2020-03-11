@@ -1,5 +1,0 @@
-#!/bin/sh -e
-
-for mf in $(find cmd -name Makefile); do
-  make -C "$(dirname $mf)"
-done
