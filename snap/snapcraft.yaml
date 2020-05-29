@@ -1,0 +1,25 @@
+name: ping-exporter
+base: core18
+version: git
+summary: A Prometheus exporter for measuring latency to servers using ICMP ping
+description: |
+    ping_exporter uses the go-ping library to measure network latency to configured
+    hosts, as an indicator of connection quality. This data is made available (exported)
+    to prometheus, where it is stored and can be charted and queried over time.
+
+grade: stable
+confinement: strict
+
+apps:
+  daemon:
+    plugs:
+      - network
+      - network-bind
+      - network-control  # for raw socket support
+    command: ping_exporter --config.path=$SNAP_COMMON/config.yaml
+    daemon: simple
+
+parts:
+  speedtest-exporter:
+    plugin: go
+    source: .
