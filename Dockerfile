@@ -8,5 +8,5 @@ ENV CONFIG_FILE "/config"
 RUN apk --no-cache add ca-certificates
 WORKDIR /app
 COPY --from=builder /go/bin/ping_exporter .
-CMD ./ping_exporter --config.path $CONFIG_FILE
+CMD ./ping_exporter --config.path $CONFIG_FILE --web.listen-address 0.0.0.0:9247
 EXPOSE 9427
