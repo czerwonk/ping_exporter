@@ -3,10 +3,25 @@ Description=Ping Exporter
 After=network.target
 
 [Service]
-User=root
-ExecStart=/usr/local/bin/ping_exporter -web.listen-address 127.0.0.1:9427 8.8.8.8 9.9.9.9
-KillMode=process
-Restart=on-failure
+User=ping_exporter
+ExecStart=/usr/local/bin/ping_exporter --config.path=/etc/ping_exporter/config.yml
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_NET_RAW
+PrivateDevices=true
+PrivateTmp=yes
+ProtectControlGroups=true
+ProtectKernelModules=yes
+ProtectKernelTunables=true
+ProtectSystem=strict
+ProtectClock=true
+ProtectHostname=true
+ProtectHome=true
+DevicePolicy=closed
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+MemoryDenyWriteExecute=yes
+LockPersonality=yes
 
 [Install]
 WantedBy=default.target
