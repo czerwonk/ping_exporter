@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 User=root
-ExecStart=/usr/local/bin/ping_exporter -web.listen-address 127.0.0.1:9427 8.8.8.8 9.9.9.9
+ExecStart=/usr/local/bin/ping_exporter --config.path=/etc/ping_exporter/config.yml
 KillMode=process
 Restart=on-failure
 
