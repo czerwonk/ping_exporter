@@ -3,3 +3,6 @@
 ping_exporter
 ping_exporter.exe
 artifacts
+
+# snap
+*.snap
