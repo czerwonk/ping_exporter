@@ -119,7 +119,7 @@ https://hub.docker.com/r/czerwonk/ping_exporter
 To run the ping_exporter as a Docker container, run:
 
 ```console
-$ docker run -p 9427:9427 -v ./config:/config:ro --name ping_exporter czerwonk/ping_exporter
+$ docker run -p 9427:9427 -v /path/to/config/directory:/config:ro --name ping_exporter czerwonk/ping_exporter
 ```
 
 
