@@ -7,6 +7,7 @@ User=ping_exporter
 ExecStart=/usr/local/bin/ping_exporter --config.path=/etc/ping_exporter/config.yml
 NoNewPrivileges=yes
 CapabilityBoundingSet=CAP_NET_RAW
+AmbientCapabilities=CAP_NET_RAW
 PrivateDevices=true
 PrivateTmp=yes
 ProtectControlGroups=true
