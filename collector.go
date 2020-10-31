@@ -18,6 +18,8 @@ var (
 	meanDesc   = prometheus.NewDesc(prefix+"rtt_mean_ms", "Mean round trip time in millis", labelNames, nil)
 	stddevDesc = prometheus.NewDesc(prefix+"rtt_std_deviation_ms", "Standard deviation in millis", labelNames, nil)
 	lossDesc   = prometheus.NewDesc(prefix+"loss_percent", "Packet loss in percent", labelNames, nil)
+	lostDesc   = prometheus.NewDesc(prefix+"lost_total", "Number of packets lost in total", labelNames, nil)
+	sentDesc   = prometheus.NewDesc(prefix+"sent_total", "Number of packets sent in total", labelNames, nil)
 	progDesc   = prometheus.NewDesc(prefix+"up", "ping_exporter version", nil, prometheus.Labels{"version": version})
 	mutex      = &sync.Mutex{}
 )
@@ -37,6 +39,8 @@ func (p *pingCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- meanDesc
 	ch <- stddevDesc
 	ch <- progDesc
+	ch <- lostDesc
+	ch <- sentDesc
 }
 
 func (p *pingCollector) Collect(ch chan<- prometheus.Metric) {
@@ -66,7 +70,11 @@ func (p *pingCollector) Collect(ch chan<- prometheus.Metric) {
 			ch <- prometheus.MustNewConstMetric(stddevDesc, prometheus.GaugeValue, float64(metrics.StdDev), l...)
 		}
 
-		loss := float64(metrics.PacketsLost) / float64(metrics.PacketsSent)
+		sentf := float64(metrics.PacketsSent)
+		lostf := float64(metrics.PacketsLost)
+		loss := lostf / sentf
 		ch <- prometheus.MustNewConstMetric(lossDesc, prometheus.GaugeValue, loss, l...)
+		ch <- prometheus.MustNewConstMetric(lostDesc, prometheus.CounterValue, lostf, l...)
+		ch <- prometheus.MustNewConstMetric(sentDesc, prometheus.CounterValue, sentf, l...)
 	}
 }

@@ -54,6 +54,8 @@ $ ./ping_exporter --dns.nameserver=1.1.1.1:53 [other options]
 - `ping_rtt_mean_ms`:          Mean round trip time in millis
 - `ping_rtt_std_deviation_ms`: Standard deviation in millis
 - `ping_loss_percent`:         Packet loss in percent
+- `ping_sent_total`:           Number of packets sent in total
+- `ping_lost_total`:           Number of packets lost in total
 
 Each metric has labels `ip` (the target's IP address), `ip_version`
 (4 or 6, corresponding to the IP version), and `target` (the target's
