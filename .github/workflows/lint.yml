@@ -1,24 +1,24 @@
-name: Release
+name: Lint
 
 on:
   push:
-    tags:
-      - '*.*.*'
+  pull_request:
 
 jobs:
-  goreleaser:
-    name: Create Release
+  lint:
     runs-on: ubuntu-latest
     env:
       GO_VERSION: "1.16"
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
       - name: Set up Go ${{ env.GO_VERSION }}
         uses: actions/setup-go@v2
         with:
           go-version: ${{ env.GO_VERSION }}
+
+      - name: Check out code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
       - name: Cache Go modules
         uses: actions/cache@v2
@@ -29,9 +29,14 @@ jobs:
           key:          ${{ runner.os }}-${{ env.GO_VERSION }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: ${{ runner.os }}-${{ env.GO_VERSION }}-go-
 
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v2
+      - name: Check and get dependencies
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod
+          git diff --exit-code go.sum
+          go mod download
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
         with:
-          args: release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          version: v1.38
