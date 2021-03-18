@@ -1,20 +1,96 @@
 dist: artifacts
+
 before:
-   hooks:
-     - go mod download
+  hooks:
+    - go mod download
+    - go mod tidy
+
 builds:
   - env:
-    - CGO_ENABLED=0
+      - CGO_ENABLED=0
     goos:
-    - linux
-    - darwin
-    - freebsd
+      - linux
+      - darwin
+      - windows
+      - freebsd
     goarch:
-    - amd64
-    - arm
-    - arm64
+      - arm
+      - arm64
+      - mips
+      - mipsle
+      - mips64
+      - mips64le
+      - amd64
+    gomips:
+      - hardfloat
+      - softfloat
+    goarm:
+      - 6
+      - 7
     ignore:
-    - goos: freebsd
-      goarch: arm64
-    ldflags: -s -w -X main.version={{.Version}}
-    binary: ping_exporter 
+      # pretty sure all 64bit MIPS chips have a FPU
+      - { goarch: mips64,   gomips: softfloat }
+      - { goarch: mips64le, gomips: softfloat }
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    binary: ping_exporter
+
+archives:
+  - format: tar.gz
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if eq .Mips "softfloat" }}sf{{ end }}'
+    format_overrides:
+      - goos:   windows
+        format: zip
+
+snapshot:
+  name_template: SNAPSHOT-{{ .ShortCommit }}
+
+nfpms:
+  - vendor:       Daniel Czerwonk
+    homepage:     "https://github.com/czerwonk/ping_exporter"
+    maintainer:   Daniel Czerwonk
+    description:  "Ping prometheus exporter"
+    license:      MIT
+    section:      net
+    priority:     extra
+
+    file_name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if eq .Mips "softfloat" }}sf{{ end }}'
+
+    formats:
+      - rpm # TODO: create pre/post install/remove scripts
+      - deb
+
+    bindir: /usr/bin
+
+    contents:
+      # main systemd unit
+      - src: dist/ping_exporter.service
+        dst: /lib/systemd/system/ping_exporter.service
+
+      # sample configuration
+      - src: dist/ping_exporter.yaml
+        dst: /etc/ping_exporter/config.yml
+        type: config
+
+      # systemd drop-ins, will be managed in postinstall and preremove script
+      - src: dist/ping_exporter.d/systemd-*.conf
+        dst: /usr/local/share/ping_exporter/
+
+    empty_folders:
+      - /run/systemd/system/ping_exporter.service.d
+
+    overrides:
+      deb:
+        scripts:
+          postinstall:  dist/postinstall.sh
+          preremove:    dist/preremove.sh
+          postremove:   dist/postremove.sh
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
