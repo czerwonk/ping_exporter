@@ -39,6 +39,9 @@ var (
 var (
 	enableDeprecatedMetrics = true // default may change in future
 	deprecatedMetrics       = kingpin.Flag("metrics.deprecated", "Enable or disable deprecated metrics (`ping_rtt_ms{type=best|worst|mean|std_dev}`). Valid choices: [enable, disable]").Default("enable").String()
+
+	rttMetricsScale = rttInMills // might change in future
+	rttMode         = kingpin.Flag("metrics.rttunit", "Export ping results as either millis (default), or seconds (best practice), or both (for migrations). Valid choices: [ms, s, both]").Default("ms").String()
 )
 
 func init() {
@@ -65,6 +68,11 @@ func main() {
 	default:
 		kingpin.FatalUsage("metrics.deprecated must be `enable` or `disable`")
 	}
+
+	if rttMetricsScale = rttUnitFromString(*rttMode); rttMetricsScale == rttInvalid {
+		kingpin.FatalUsage("metrics.rttunit must be `ms` for millis, or `s` for seconds, or `both`")
+	}
+	log.Infof("rtt units: %#v", rttMetricsScale)
 
 	if mpath := *metricsPath; mpath == "" {
 		log.Warnln("web.telemetry-path is empty, correcting to `/metrics`")
