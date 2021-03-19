@@ -25,7 +25,7 @@ func (t *target) addOrUpdateMonitor(monitor *mon.Monitor) error {
 
 	addrs, err := t.resolver.LookupIPAddr(context.Background(), t.host)
 	if err != nil {
-		return fmt.Errorf("error resolving target: %v", err)
+		return fmt.Errorf("error resolving target: %w", err)
 	}
 
 	for _, addr := range addrs {
@@ -45,12 +45,13 @@ func (t *target) addIfNew(addr net.IPAddr, monitor *mon.Monitor) error {
 	if isIPAddrInSlice(addr, t.addresses) {
 		return nil
 	}
+
 	return t.add(addr, monitor)
 }
 
-func (t *target) cleanUp(new []net.IPAddr, monitor *mon.Monitor) {
+func (t *target) cleanUp(addr []net.IPAddr, monitor *mon.Monitor) {
 	for _, o := range t.addresses {
-		if !isIPAddrInSlice(o, new) {
+		if !isIPAddrInSlice(o, addr) {
 			name := t.nameForIP(o)
 			log.Infof("removing target for host %s (%v)", t.host, o)
 			monitor.RemoveTarget(name)
@@ -61,6 +62,7 @@ func (t *target) cleanUp(new []net.IPAddr, monitor *mon.Monitor) {
 func (t *target) add(addr net.IPAddr, monitor *mon.Monitor) error {
 	name := t.nameForIP(addr)
 	log.Infof("adding target for host %s (%v)", t.host, addr)
+
 	return monitor.AddTargetDelayed(name, addr, t.delay)
 }
 
@@ -69,6 +71,7 @@ func (t *target) nameForIP(addr net.IPAddr) string {
 	if addr.IP.To4() == nil {
 		v = 6
 	}
+
 	return fmt.Sprintf("%s %s %d", t.host, addr.IP, v)
 }
 
@@ -78,5 +81,6 @@ func isIPAddrInSlice(ipa net.IPAddr, slice []net.IPAddr) bool {
 			return true
 		}
 	}
+
 	return false
 }

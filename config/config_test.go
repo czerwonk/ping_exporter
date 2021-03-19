@@ -8,6 +8,8 @@ import (
 )
 
 func TestParseConfig(t *testing.T) {
+	t.Parallel()
+
 	f, err := os.Open("testdata/config_test.yml")
 	if err != nil {
 		t.Error("failed to open file", err)
@@ -52,5 +54,4 @@ func TestParseConfig(t *testing.T) {
 	if expected := 120; c.Ping.Size != uint16(expected) {
 		t.Errorf("expected ping.payload-size to be %d, got %d", expected, c.Ping.Size)
 	}
-
 }
