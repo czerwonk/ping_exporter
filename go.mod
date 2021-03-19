@@ -1,6 +1,6 @@
 module github.com/czerwonk/ping_exporter
 
-go 1.14
+go 1.16
 
 require (
 	github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d // indirect
