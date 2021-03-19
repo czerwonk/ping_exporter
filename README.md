@@ -62,6 +62,33 @@ name).
 Additionally, a `ping_up` metric reports whether the exporter
 is running (and in which version).
 
+#### Different time unit
+
+The `*_ms` metrics actually violate the recommendations by
+[Prometheus](https://prometheus.io/docs/practices/naming/#base-units),
+whereby time values should be expressed in seconds (not milliseconds).
+
+To accomodate for this, we've added a command line switch to select
+the proper scale:
+
+```console
+$ # keep using millis
+$ ./ping_exporter --metrics.rttunit=ms [other options]
+$ # use seconds instead
+$ ./ping_exporter --metrics.rttunit=s [other options]
+$ # use both millis and seconds
+$ ./ping_exporter --metrics.rttunit=both [other options]
+```
+
+For the foreseeable future, the default is `--metrics.rttunit=ms`.
+
+If you used the `ping_exporter` in the past, and want to migrate, start
+using `--metrics.rttunit=both` now. This gives you the opportunity to
+update all your alerts, dashboards, and other software depending on ms
+values to use proper scale (you "just" need to apply a factor of 1000
+on everything). When you're ready, you just need to switch to
+`--metrics.rttunit=s`.
+
 #### Deprecated metrics
 
 - `ping_rtt_ms`: Round trip trim in millis
