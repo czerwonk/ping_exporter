@@ -19,7 +19,7 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-const version string = "0.4.5"
+const version string = "0.4.6"
 
 var (
 	showVersion   = kingpin.Flag("version", "Print version information").Default().Bool()
@@ -110,9 +110,9 @@ func printVersion() {
 
 func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
 	resolver := setupResolver(cfg)
-	var bind4,bind6 string
+	var bind4, bind6 string
 	if ln, err := net.Listen("tcp4", "127.0.0.1:0"); err == nil {
-                //ipv4 enabled
+		//ipv4 enabled
 		ln.Close()
 		bind4 = "0.0.0.0"
 	}
