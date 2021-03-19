@@ -84,7 +84,7 @@ func main() {
 		kingpin.FatalUsage("ping.history-size must be greater than 0")
 	}
 
-	if cfg.Ping.Size < 0 || cfg.Ping.Size > 65500 {
+	if cfg.Ping.Size > 65500 {
 		kingpin.FatalUsage("ping.size must be between 0 and 65500")
 	}
 
@@ -112,18 +112,18 @@ func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
 	resolver := setupResolver(cfg)
 	var bind4, bind6 string
 	if ln, err := net.Listen("tcp4", "127.0.0.1:0"); err == nil {
-		//ipv4 enabled
+		// ipv4 enabled
 		ln.Close()
 		bind4 = "0.0.0.0"
 	}
 	if ln, err := net.Listen("tcp6", "[::1]:0"); err == nil {
-		//ipv6 enabled
+		// ipv6 enabled
 		ln.Close()
 		bind6 = "::"
 	}
 	pinger, err := ping.New(bind4, bind6)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot start monitoring: %w", err)
 	}
 
 	if pinger.PayloadSize() != cfg.Ping.Size {
@@ -188,7 +188,8 @@ func startServer(monitor *mon.Monitor) {
 	reg.MustRegister(&pingCollector{monitor: monitor})
 	h := promhttp.HandlerFor(reg, promhttp.HandlerOpts{
 		ErrorLog:      log.NewErrorLogger(),
-		ErrorHandling: promhttp.ContinueOnError})
+		ErrorHandling: promhttp.ContinueOnError,
+	})
 	http.Handle(*metricsPath, h)
 
 	log.Infof("Listening for %s on %s", *metricsPath, *listenAddress)
@@ -199,12 +200,13 @@ func loadConfig() (*config.Config, error) {
 	if *configFile == "" {
 		cfg := config.Config{}
 		addFlagToConfig(&cfg)
+
 		return &cfg, nil
 	}
 
 	f, err := os.Open(*configFile)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot load config file: %w", err)
 	}
 	defer f.Close()
 
@@ -212,6 +214,7 @@ func loadConfig() (*config.Config, error) {
 	if err == nil {
 		addFlagToConfig(cfg)
 	}
+
 	return cfg, err
 }
 
@@ -225,8 +228,10 @@ func setupResolver(cfg *config.Config) *net.Resolver {
 	}
 	dialer := func(ctx context.Context, network, address string) (net.Conn, error) {
 		d := net.Dialer{}
+
 		return d.DialContext(ctx, "udp", cfg.DNS.Nameserver)
 	}
+
 	return &net.Resolver{PreferGo: true, Dial: dialer}
 }
 

@@ -1,13 +1,14 @@
 package config
 
 import (
+	"fmt"
 	"io"
 	"time"
 
 	yaml "gopkg.in/yaml.v2"
 )
 
-// Config represents configuration for the exporter
+// Config represents configuration for the exporter.
 type Config struct {
 	Targets []string `yaml:"targets"`
 
@@ -34,9 +35,10 @@ func (d *duration) UnmarshalYAML(unmashal func(interface{}) error) error {
 	}
 	dur, err := time.ParseDuration(s)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to decode duration: %w", err)
 	}
 	*d = duration(dur)
+
 	return nil
 }
 
@@ -50,12 +52,13 @@ func (d *duration) Set(dur time.Duration) {
 	*d = duration(dur)
 }
 
-// FromYAML reads YAML from reader and unmarshals it to Config
+// FromYAML reads YAML from reader and unmarshals it to Config.
 func FromYAML(r io.Reader) (*Config, error) {
 	c := &Config{}
 	err := yaml.NewDecoder(r).Decode(c)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to decode YAML: %w", err)
 	}
+
 	return c, nil
 }
