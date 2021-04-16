@@ -1,6 +1,6 @@
 # ping_exporter
 [![Test results](https://github.com/github.com/czerwonk/ping_exporter/workflows/Test/badge.svg)](https://github.com/github.com/czerwonk/ping_exporter/actions?query=workflow%3ATest)
-[![Docker Build Statu](https://img.shields.io/docker/build/czerwonk/ping_exporter.svg)](https://hub.docker.com/r/czerwonk/ping_exporter/builds)
+[![Docker Build Status](https://img.shields.io/docker/cloud/build/czerwonk/ping_exporter.svg)](https://hub.docker.com/r/czerwonk/ping_exporter/builds)
 [![Go Report Card](https://goreportcard.com/badge/github.com/czerwonk/ping_exporter)](https://goreportcard.com/report/github.com/czerwonk/ping_exporter)
 
 Prometheus exporter for ICMP echo requests using https://github.com/digineo/go-ping
