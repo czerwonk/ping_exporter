@@ -14,11 +14,11 @@ func newDesc(name, help string, variableLabels []string, constLabels prometheus.
 
 var (
 	labelNames = []string{"target", "ip", "ip_version"}
-	rttDesc    = newScaledDesc("rtt_seconds", "Round trip time", append(labelNames, "type"))
-	bestDesc   = newScaledDesc("rtt_best_seconds", "Best round trip time", labelNames)
-	worstDesc  = newScaledDesc("rtt_worst_seconds", "Worst round trip time", labelNames)
-	meanDesc   = newScaledDesc("rtt_mean_seconds", "Mean round trip time", labelNames)
-	stddevDesc = newScaledDesc("rtt_std_deviation_seconds", "Standard deviation", labelNames)
+	rttDesc    = newScaledDesc("rtt", "Round trip time", append(labelNames, "type"))
+	bestDesc   = newScaledDesc("rtt_best", "Best round trip time", labelNames)
+	worstDesc  = newScaledDesc("rtt_worst", "Worst round trip time", labelNames)
+	meanDesc   = newScaledDesc("rtt_mean", "Mean round trip time", labelNames)
+	stddevDesc = newScaledDesc("rtt_std_deviation", "Standard deviation", labelNames)
 	lossDesc   = newDesc("loss_percent", "Packet loss in percent", labelNames, nil)
 	progDesc   = newDesc("up", "ping_exporter version", nil, prometheus.Labels{"version": version})
 	mutex      = &sync.Mutex{}
