@@ -4,8 +4,14 @@ After=network.target
 
 [Service]
 User=ping_exporter
-ExecStart=/usr/local/bin/ping_exporter --config.path=/etc/ping_exporter/config.yml
-NoNewPrivileges=yes
+ExecStart=/usr/bin/ping_exporter --config.path=/etc/ping_exporter/config.yml
+
+# This unit assumes systemd 232, present in EdgeOS 2.0.0
+# (a derivative of Vyatta/Debian 9).
+#
+# If the ping_exporter was installed on system with a newer systemd
+# version, you'll find additional drop-ins in ping_exporter.d/.
+
 CapabilityBoundingSet=CAP_NET_RAW
 AmbientCapabilities=CAP_NET_RAW
 PrivateDevices=true
@@ -14,15 +20,10 @@ ProtectControlGroups=true
 ProtectKernelModules=yes
 ProtectKernelTunables=true
 ProtectSystem=strict
-ProtectClock=true
-ProtectHostname=true
 ProtectHome=true
 DevicePolicy=closed
-RestrictNamespaces=yes
 RestrictRealtime=yes
-RestrictSUIDSGID=yes
 MemoryDenyWriteExecute=yes
-LockPersonality=yes
 
 [Install]
 WantedBy=default.target
