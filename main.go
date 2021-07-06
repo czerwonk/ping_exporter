@@ -19,7 +19,8 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-const version string = "0.4.7"
+// Version is updated at compile-time via -ldflags.
+var version string = "development"
 
 var (
 	showVersion   = kingpin.Flag("version", "Print version information").Default().Bool()
@@ -189,7 +190,7 @@ func refreshDNS(targets []*target, monitor *mon.Monitor) {
 func startServer(monitor *mon.Monitor) {
 	log.Infof("Starting ping exporter (Version: %s)", version)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, indexHTML, *metricsPath)
+		fmt.Fprintf(w, indexHTML, version, *metricsPath)
 	})
 
 	reg := prometheus.NewRegistry()
@@ -273,7 +274,7 @@ const indexHTML = `<!doctype html>
 <html>
 <head>
 	<meta charset="UTF-8">
-	<title>ping Exporter (Version ` + version + `)</title>
+	<title>ping Exporter (Version %s)</title>
 </head>
 <body>
 	<h1>ping Exporter</h1>
