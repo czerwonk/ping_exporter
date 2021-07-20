@@ -15,11 +15,11 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/log"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-const version string = "0.4.7"
+const version string = "0.4.8"
 
 var (
 	showVersion   = kingpin.Flag("version", "Print version information").Default().Bool()
@@ -54,11 +54,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	err := log.Logger.SetLevel(log.Base(), *logLevel)
-	if err != nil {
-		log.Errorln(err)
-		os.Exit(1)
-	}
+	setLogLevel(*logLevel)
 
 	switch *deprecatedMetrics {
 	case "enable":
@@ -194,8 +190,12 @@ func startServer(monitor *mon.Monitor) {
 
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(&pingCollector{monitor: monitor})
+
+	l := log.New()
+	l.Level = log.ErrorLevel
+
 	h := promhttp.HandlerFor(reg, promhttp.HandlerOpts{
-		ErrorLog:      log.NewErrorLogger(),
+		ErrorLog:      l,
 		ErrorHandling: promhttp.ContinueOnError,
 	})
 	http.Handle(*metricsPath, h)
