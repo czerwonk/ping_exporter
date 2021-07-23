@@ -139,6 +139,13 @@ Getting the results for testing via cURL:
 $ curl http://localhost:9427/metrics
 ```
 
+### Running as non-root user
+
+On Linux systems `CAP_NET_RAW` is required to run `ping_exporter` as unpriviliged user.
+```console
+# setcap cap_net_raw+ep /path/to/ping_exporter
+```
+
 ### Docker
 
 https://hub.docker.com/r/czerwonk/ping_exporter
