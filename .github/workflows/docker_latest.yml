@@ -2,7 +2,7 @@ on:
   workflow_run:
     workflows: ["Test"]
     branches: [master]
-    types: 
+    types:
       - completed
 
 name: Docker Build (latest)
@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check Out Repo 
+      - name: Check Out Repo
         uses: actions/checkout@v2
 
       - name: Login to Docker Hub
@@ -24,6 +24,8 @@ jobs:
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v1
+        with:
+          install: true
 
       - name: Extract repo name
         id: extract_repo_name
@@ -38,6 +40,7 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/${{ steps.extract_repo_name.outputs.repo }}:latest
+          platforms: linux/amd64,linux/arm64,linux/arm/v6,linux/arm/v7
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
