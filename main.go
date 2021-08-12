@@ -25,7 +25,7 @@ var (
 	showVersion   = kingpin.Flag("version", "Print version information").Default().Bool()
 	listenAddress = kingpin.Flag("web.listen-address", "Address on which to expose metrics and web interface").Default(":9427").String()
 	metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics").Default("/metrics").String()
-	configFile    = kingpin.Flag("config.path", "Path to config file").Default("").String()
+	configFile    = kingpin.Flag("config.path", "Path to config file").Default("/config/config.yml").String()
 	pingInterval  = kingpin.Flag("ping.interval", "Interval for ICMP echo requests").Default("5s").Duration()
 	pingTimeout   = kingpin.Flag("ping.timeout", "Timeout for ICMP echo request").Default("4s").Duration()
 	pingSize      = kingpin.Flag("ping.size", "Payload size for ICMP echo requests").Default("56").Uint16()
