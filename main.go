@@ -176,7 +176,7 @@ func refreshDNS(targets []*target, monitor *mon.Monitor) {
 		go func(ta *target) {
 			err := ta.addOrUpdateMonitor(monitor)
 			if err != nil {
-				log.Errorf("could refresh dns: %v", err)
+				log.Errorf("could not refresh dns: %v", err)
 			}
 		}(t)
 	}
