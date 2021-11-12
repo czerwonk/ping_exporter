@@ -5,8 +5,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /go/bin/ping_expo
 
 FROM alpine:latest
 ENV CONFIG_FILE "/config/config.yml"
-RUN apk --no-cache add ca-certificates
+RUN apk --no-cache add ca-certificates libcap
 WORKDIR /app
 COPY --from=builder /go/bin/ping_exporter .
+RUN setcap cap_net_raw+ep /app/ping_exporter
 CMD ./ping_exporter --config.path $CONFIG_FILE
 EXPOSE 9427

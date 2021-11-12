@@ -146,6 +146,8 @@ On Linux systems `CAP_NET_RAW` is required to run `ping_exporter` as unprivilige
 # setcap cap_net_raw+ep /path/to/ping_exporter
 ```
 
+When run through a rootless Docker implementation on Linux, the flag `--cap-add=CAP_NET_RAW` should be added to the `docker run` invocation.
+
 ### Docker
 
 https://hub.docker.com/r/czerwonk/ping_exporter
