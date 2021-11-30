@@ -92,11 +92,26 @@ func main() {
 		kingpin.FatalUsage("ping.size must be between 0 and 65500")
 	}
 
-	if len(cfg.Targets) == 0 {
-		kingpin.FatalUsage("No targets specified")
+	if len(cfg.Monitors) == 0 {
+		if len(cfg.Targets) == 0 {
+			kingpin.FatalUsage("Either monitors or targets must be specified")
+		} else {
+			// Legacy config format.  Create a single monitor entry
+			// with the specified targets under cfg.Monitors
+			cfg.Monitors = make([]config.MonitorConfig, 1)
+			cfg.Monitors[0].Targets = cfg.Targets
+		}
+	} else if len(cfg.Targets) != 0 {
+		kingpin.FatalUsage("monitors and targets cannot both be specified")
 	}
 
-	m, err := startMonitor(cfg)
+	// Go through all the defined monitors and fill in any undefined values
+	// from the global defaults
+	for i := range cfg.Monitors {
+		setMonitorConfigDefaults(cfg, &cfg.Monitors[i])
+	}
+
+	m, err := startMonitors(cfg)
 	if err != nil {
 		log.Errorln(err)
 		os.Exit(2)
@@ -112,7 +127,7 @@ func printVersion() {
 	fmt.Println("Metric exporter for go-icmp")
 }
 
-func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
+func startMonitors(cfg *config.Config) ([]*mon.Monitor, error) {
 	resolver := setupResolver(cfg)
 	var bind4, bind6 string
 	if ln, err := net.Listen("tcp4", "127.0.0.1:0"); err == nil {
@@ -125,39 +140,49 @@ func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
 		ln.Close()
 		bind6 = "::"
 	}
-	pinger, err := ping.New(bind4, bind6)
-	if err != nil {
-		return nil, fmt.Errorf("cannot start monitoring: %w", err)
-	}
 
-	if pinger.PayloadSize() != cfg.Ping.Size {
-		pinger.SetPayloadSize(cfg.Ping.Size)
-	}
-
-	monitor := mon.New(pinger,
-		cfg.Ping.Interval.Duration(),
-		cfg.Ping.Timeout.Duration())
-	monitor.HistorySize = cfg.Ping.History
-
-	targets := make([]*target, len(cfg.Targets))
-	for i, host := range cfg.Targets {
-		t := &target{
-			host:      host,
-			addresses: make([]net.IPAddr, 0),
-			delay:     time.Duration(10*i) * time.Millisecond,
-			resolver:  resolver,
-		}
-		targets[i] = t
-
-		err := t.addOrUpdateMonitor(monitor)
+	result := make([]*mon.Monitor, len(cfg.Monitors))
+	for mon_index, mon_cfg := range cfg.Monitors {
+		pinger, err := ping.New(bind4, bind6)
 		if err != nil {
-			log.Errorln(err)
+			return nil, fmt.Errorf("cannot start monitoring: %w", err)
 		}
+
+		if pinger.PayloadSize() != mon_cfg.Ping.Size {
+			pinger.SetPayloadSize(mon_cfg.Ping.Size)
+		}
+
+		monitor := mon.New(pinger,
+			mon_cfg.Ping.Interval.Duration(),
+			mon_cfg.Ping.Timeout.Duration())
+		monitor.HistorySize = mon_cfg.Ping.History
+		log.Infof("Created new monitor (interval=%s, timeout=%s, history=%d)",
+			mon_cfg.Ping.Interval.Duration(),
+			mon_cfg.Ping.Timeout.Duration(),
+			mon_cfg.Ping.History)
+
+		targets := make([]*target, len(mon_cfg.Targets))
+		for i, host := range mon_cfg.Targets {
+			t := &target{
+				host:      host,
+				addresses: make([]net.IPAddr, 0),
+				delay:     time.Duration(10*i) * time.Millisecond,
+				resolver:  resolver,
+			}
+			targets[i] = t
+
+			err := t.addOrUpdateMonitor(monitor)
+			if err != nil {
+				log.Errorln(err)
+			}
+		}
+
+		go startDNSAutoRefresh(mon_cfg.DNS.Refresh.Duration(), targets, monitor)
+
+		result[mon_index] = monitor
 	}
 
-	go startDNSAutoRefresh(cfg.DNS.Refresh.Duration(), targets, monitor)
-
-	return monitor, nil
+	return result, nil
 }
 
 func startDNSAutoRefresh(interval time.Duration, targets []*target, monitor *mon.Monitor) {
@@ -182,14 +207,14 @@ func refreshDNS(targets []*target, monitor *mon.Monitor) {
 	}
 }
 
-func startServer(monitor *mon.Monitor) {
+func startServer(monitors []*mon.Monitor) {
 	log.Infof("Starting ping exporter (Version: %s)", version)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, indexHTML, *metricsPath)
 	})
 
 	reg := prometheus.NewRegistry()
-	reg.MustRegister(&pingCollector{monitor: monitor})
+	reg.MustRegister(&pingCollector{monitors: monitors})
 
 	l := log.New()
 	l.Level = log.ErrorLevel
@@ -266,6 +291,24 @@ func addFlagToConfig(cfg *config.Config) {
 	}
 	if cfg.DNS.Nameserver == "" {
 		cfg.DNS.Nameserver = *dnsNameServer
+	}
+}
+
+func setMonitorConfigDefaults(cfg *config.Config, mon_cfg *config.MonitorConfig) {
+	if mon_cfg.Ping.History == 0 {
+		mon_cfg.Ping.History = cfg.Ping.History
+	}
+	if mon_cfg.Ping.Interval == 0 {
+		mon_cfg.Ping.Interval = cfg.Ping.Interval
+	}
+	if mon_cfg.Ping.Timeout == 0 {
+		mon_cfg.Ping.Timeout = cfg.Ping.Timeout
+	}
+	if mon_cfg.Ping.Size == 0 {
+		mon_cfg.Ping.Size = cfg.Ping.Size
+	}
+	if mon_cfg.DNS.Refresh == 0 {
+		mon_cfg.DNS.Refresh = cfg.DNS.Refresh
 	}
 }
 

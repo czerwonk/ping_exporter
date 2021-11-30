@@ -25,7 +25,7 @@ var (
 )
 
 type pingCollector struct {
-	monitor *mon.Monitor
+	monitors []*mon.Monitor
 	metrics map[string]*mon.Metrics
 }
 
@@ -45,8 +45,13 @@ func (p *pingCollector) Collect(ch chan<- prometheus.Metric) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	if m := p.monitor.Export(); len(m) > 0 {
-		p.metrics = m
+	if p.metrics == nil {
+		p.metrics = make(map[string]*mon.Metrics)
+	}
+	for _, mon := range p.monitors {
+		for target, metrics := range mon.Export() {
+			p.metrics[target] = metrics
+		}
 	}
 
 	ch <- prometheus.MustNewConstMetric(progDesc, prometheus.GaugeValue, 1)
