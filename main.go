@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/czerwonk/ping_exporter/config"
@@ -43,6 +44,21 @@ var (
 	rttMetricsScale = rttInMills // might change in future
 	rttMode         = kingpin.Flag("metrics.rttunit", "Export ping results as either millis (default), or seconds (best practice), or both (for migrations). Valid choices: [ms, s, both]").Default("ms").String()
 )
+
+// The following are used to keep track of the last used ping ID field value,
+// and to pick a new one.  Each new ping ID is incremented by PINGID_INCR,
+// which is a large relatively-prime value chosen to distribute the ID values
+// as evenly as possible over the entire space in a deterministic manner.  This
+// is slightly better than just picking random values as it guarantees a
+// maximum interval before reuse, while still making accidental conflicts
+// unlikely.
+const PINGID_INCR = 29479
+// (this is set up so that the first value chosen will always end up being the
+// PID.  If multiple monitors and id-change-intervals are not being used, this
+// is consistent with the old behavior and it is also a good way to make sure
+// that if somebody's running multiple copies of this program they are unlikely
+// to overlap with each other (even when periodically generating new IDs).)
+var lastPingId = uint32(os.Getpid() - PINGID_INCR)
 
 func init() {
 	kingpin.Parse()
@@ -94,15 +110,16 @@ func main() {
 
 	if len(cfg.Monitors) == 0 {
 		if len(cfg.Targets) == 0 {
-			kingpin.FatalUsage("Either monitors or targets must be specified")
+			kingpin.FatalUsage("either 'monitors' or 'targets' must be specified")
 		} else {
-			// Legacy config format.  Create a single monitor entry
-			// with the specified targets under cfg.Monitors
+			// Legacy single-target-list format.  Create a single
+			// monitor entry under cfg.Monitors with the specified
+			// targets.
 			cfg.Monitors = make([]config.MonitorConfig, 1)
 			cfg.Monitors[0].Targets = cfg.Targets
 		}
 	} else if len(cfg.Targets) != 0 {
-		kingpin.FatalUsage("monitors and targets cannot both be specified")
+		kingpin.FatalUsage("you must specify either 'monitors' or 'targets', not both")
 	}
 
 	// Go through all the defined monitors and fill in any undefined values
@@ -124,7 +141,23 @@ func printVersion() {
 	fmt.Println("ping-exporter")
 	fmt.Printf("Version: %s\n", version)
 	fmt.Println("Author(s): Philip Berndroth, Daniel Czerwonk")
-	fmt.Println("Metric exporter for go-icmp")
+	fmt.Println("Metric exporter for go-ping")
+}
+
+// Return a new ID value which won't overlap with any recent previous values.
+// There is unfortunately no easy way to make sure something else isn't using
+// this value, so we just have to try to spread them around as much as possible
+// to try to avoid conflicts with other things.
+// Note: In many OSes, the kernel and things like the `ping` command often
+// choose id values starting at low numbers and work up, so we avoid using the
+// first 1024 values, just to reduce the likelihood of conflicts with people
+// running arbitrary `ping` commands on the command line from time to time.
+func newPingId() uint16 {
+	for {
+		if id := uint16(atomic.AddUint32(&lastPingId, PINGID_INCR)); id >= 1024 {
+			return id
+		}
+	}
 }
 
 func startMonitors(cfg *config.Config) ([]*mon.Monitor, error) {
@@ -147,6 +180,8 @@ func startMonitors(cfg *config.Config) ([]*mon.Monitor, error) {
 		if err != nil {
 			return nil, fmt.Errorf("cannot start monitoring: %w", err)
 		}
+		// Set a distinct ICMP identifier field for each pinger
+		pinger.Id = newPingId()
 
 		if pinger.PayloadSize() != mon_cfg.Ping.Size {
 			pinger.SetPayloadSize(mon_cfg.Ping.Size)
@@ -178,6 +213,8 @@ func startMonitors(cfg *config.Config) ([]*mon.Monitor, error) {
 		}
 
 		go startDNSAutoRefresh(mon_cfg.DNS.Refresh.Duration(), targets, monitor)
+		go startPingIdAutoUpdate(mon_cfg.Ping.IDChangeInterval.Duration(),
+			mon_cfg.Ping.IDChangeThreshold, pinger, monitor)
 
 		result[mon_index] = monitor
 	}
@@ -196,7 +233,7 @@ func startDNSAutoRefresh(interval time.Duration, targets []*target, monitor *mon
 }
 
 func refreshDNS(targets []*target, monitor *mon.Monitor) {
-	log.Infoln("refreshing DNS")
+	log.Debugln("Refreshing DNS")
 	for _, t := range targets {
 		go func(ta *target) {
 			err := ta.addOrUpdateMonitor(monitor)
@@ -205,6 +242,42 @@ func refreshDNS(targets []*target, monitor *mon.Monitor) {
 			}
 		}(t)
 	}
+}
+
+func startPingIdAutoUpdate(interval time.Duration, threshold float64, pinger *ping.Pinger, monitor *mon.Monitor) {
+	if interval <= 0 {
+		return
+	}
+
+	for range time.NewTicker(interval).C {
+		log.Debugln("Checking for Ping ID update")
+		if monitorOverLossThreshold(monitor, threshold) {
+			updatePingId(pinger)
+		}
+	}
+}
+
+func monitorOverLossThreshold(monitor *mon.Monitor, threshold float64) bool {
+	if threshold <= 0 {
+		return true
+	}
+
+	sent := 0
+	lost := 0
+
+	for _, metrics := range monitor.Export() {
+		sent += metrics.PacketsSent
+		lost += metrics.PacketsLost
+	}
+	ratio := float64(lost) / float64(sent)
+
+	log.Debugf("monitor packet loss: %f (threshold=%f)", ratio, threshold)
+	return ratio >= threshold
+}
+
+func updatePingId(pinger *ping.Pinger) {
+	pinger.Id = newPingId()
+	log.Debugf("Setting new ping ID of %d", pinger.Id)
 }
 
 func startServer(monitors []*mon.Monitor) {
@@ -306,6 +379,12 @@ func setMonitorConfigDefaults(cfg *config.Config, mon_cfg *config.MonitorConfig)
 	}
 	if mon_cfg.Ping.Size == 0 {
 		mon_cfg.Ping.Size = cfg.Ping.Size
+	}
+	if mon_cfg.Ping.IDChangeInterval == 0 {
+		mon_cfg.Ping.IDChangeInterval = cfg.Ping.IDChangeInterval
+	}
+	if mon_cfg.Ping.IDChangeThreshold == 0 {
+		mon_cfg.Ping.IDChangeThreshold = cfg.Ping.IDChangeThreshold
 	}
 	if mon_cfg.DNS.Refresh == 0 {
 		mon_cfg.DNS.Refresh = cfg.DNS.Refresh

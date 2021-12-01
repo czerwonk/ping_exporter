@@ -13,10 +13,12 @@ type Config struct {
 	Targets []string `yaml:"targets"`
 
 	Ping struct {
-		Interval duration `yaml:"interval"`
-		Timeout  duration `yaml:"timeout"`
-		History  int      `yaml:"history-size"`
-		Size     uint16   `yaml:"payload-size"`
+		Interval          duration `yaml:"interval"`
+		Timeout           duration `yaml:"timeout"`
+		History           int      `yaml:"history-size"`
+		Size              uint16   `yaml:"payload-size"`
+		IDChangeInterval  duration `yaml:"id-change-interval"`
+		IDChangeThreshold float64  `yaml:"id-change-threshold"`
 	} `yaml:"ping"`
 
 	DNS struct {
@@ -34,10 +36,12 @@ type MonitorConfig struct {
 	Targets []string `yaml:"targets"`
 
 	Ping struct {
-		Interval duration `yaml:"interval"`
-		Timeout  duration `yaml:"timeout"`
-		History  int      `yaml:"history-size"`
-		Size     uint16   `yaml:"payload-size"`
+		Interval          duration `yaml:"interval"`
+		Timeout           duration `yaml:"timeout"`
+		History           int      `yaml:"history-size"`
+		Size              uint16   `yaml:"payload-size"`
+		IDChangeInterval  duration `yaml:"id-change-interval"`
+		IDChangeThreshold float64  `yaml:"id-change-threshold"`
 	} `yaml:"ping"`
 
 	DNS struct {
