@@ -26,7 +26,7 @@ var (
 
 type pingCollector struct {
 	monitors []*mon.Monitor
-	metrics map[string]*mon.Metrics
+	metrics  map[string]*mon.Metrics
 }
 
 func (p *pingCollector) Describe(ch chan<- *prometheus.Desc) {

@@ -53,12 +53,22 @@ var (
 // maximum interval before reuse, while still making accidental conflicts
 // unlikely.
 const PINGID_INCR = 29479
+
 // (this is set up so that the first value chosen will always end up being the
 // PID.  If multiple monitors and id-change-intervals are not being used, this
 // is consistent with the old behavior and it is also a good way to make sure
 // that if somebody's running multiple copies of this program they are unlikely
 // to overlap with each other (even when periodically generating new IDs).)
 var lastPingId = uint32(os.Getpid() - PINGID_INCR)
+
+type pingMonitor struct {
+	id           int
+	pinger       *ping.Pinger
+	monitor      *mon.Monitor
+	targets      []*target
+	cfg          config.MonitorConfig
+	lastIdChange time.Time
+}
 
 func init() {
 	kingpin.Parse()
@@ -178,7 +188,7 @@ func startMonitors(cfg *config.Config) ([]*mon.Monitor, error) {
 	for mon_index, mon_cfg := range cfg.Monitors {
 		pinger, err := ping.New(bind4, bind6)
 		if err != nil {
-			return nil, fmt.Errorf("cannot start monitoring: %w", err)
+			return nil, fmt.Errorf("cannot create pinger for monitor %d: %w", mon_index, err)
 		}
 		// Set a distinct ICMP identifier field for each pinger
 		pinger.Id = newPingId()
@@ -191,7 +201,8 @@ func startMonitors(cfg *config.Config) ([]*mon.Monitor, error) {
 			mon_cfg.Ping.Interval.Duration(),
 			mon_cfg.Ping.Timeout.Duration())
 		monitor.HistorySize = mon_cfg.Ping.History
-		log.Infof("Created new monitor (interval=%s, timeout=%s, history=%d)",
+		log.Infof("Created new monitor %d (interval=%s, timeout=%s, history=%d)",
+			mon_index,
 			mon_cfg.Ping.Interval.Duration(),
 			mon_cfg.Ping.Timeout.Duration(),
 			mon_cfg.Ping.History)
@@ -212,9 +223,16 @@ func startMonitors(cfg *config.Config) ([]*mon.Monitor, error) {
 			}
 		}
 
-		go startDNSAutoRefresh(mon_cfg.DNS.Refresh.Duration(), targets, monitor)
-		go startPingIdAutoUpdate(mon_cfg.Ping.IDChangeInterval.Duration(),
-			mon_cfg.Ping.IDChangeThreshold, pinger, monitor)
+		pingmon := &pingMonitor{
+			id:           mon_index,
+			pinger:       pinger,
+			monitor:      monitor,
+			targets:      targets,
+			cfg:          mon_cfg,
+			lastIdChange: time.Now(),
+		}
+		go startDNSAutoRefresh(pingmon)
+		go startPingIdAutoUpdate(pingmon)
 
 		result[mon_index] = monitor
 	}
@@ -222,18 +240,19 @@ func startMonitors(cfg *config.Config) ([]*mon.Monitor, error) {
 	return result, nil
 }
 
-func startDNSAutoRefresh(interval time.Duration, targets []*target, monitor *mon.Monitor) {
+func startDNSAutoRefresh(pingmon *pingMonitor) {
+	interval := pingmon.cfg.DNS.Refresh.Duration()
 	if interval <= 0 {
 		return
 	}
 
 	for range time.NewTicker(interval).C {
-		refreshDNS(targets, monitor)
+		log.Debugf("Monitor %d: Refreshing DNS", pingmon.id)
+		refreshDNS(pingmon.targets, pingmon.monitor)
 	}
 }
 
 func refreshDNS(targets []*target, monitor *mon.Monitor) {
-	log.Debugln("Refreshing DNS")
 	for _, t := range targets {
 		go func(ta *target) {
 			err := ta.addOrUpdateMonitor(monitor)
@@ -244,15 +263,29 @@ func refreshDNS(targets []*target, monitor *mon.Monitor) {
 	}
 }
 
-func startPingIdAutoUpdate(interval time.Duration, threshold float64, pinger *ping.Pinger, monitor *mon.Monitor) {
+func startPingIdAutoUpdate(pingmon *pingMonitor) {
+	interval := pingmon.cfg.Ping.IdChange.Interval.Duration()
+	lossThreshold := pingmon.cfg.Ping.IdChange.LossThreshold
+	timeThreshold := pingmon.cfg.Ping.IdChange.TimeThreshold.Duration()
+
 	if interval <= 0 {
 		return
 	}
+	log.Debugf("Monitor %d: Ping ID update interval=%s loss threshold=%f time_threshold=%s", pingmon.id, interval, lossThreshold, timeThreshold)
 
 	for range time.NewTicker(interval).C {
-		log.Debugln("Checking for Ping ID update")
-		if monitorOverLossThreshold(monitor, threshold) {
-			updatePingId(pinger)
+		log.Debugf("Monitor %d: Checking for Ping ID update", pingmon.id)
+		if timeThreshold > 0 {
+			sinceLastChange := time.Now().Sub(pingmon.lastIdChange)
+			if sinceLastChange >= timeThreshold {
+				log.Debugf("Monitor %d: It has has been %s since last ID change.", pingmon.id, sinceLastChange)
+				updatePingId(pingmon)
+				continue
+			}
+		}
+		if monitorOverLossThreshold(pingmon.monitor, lossThreshold) {
+			updatePingId(pingmon)
+			continue
 		}
 	}
 }
@@ -275,9 +308,10 @@ func monitorOverLossThreshold(monitor *mon.Monitor, threshold float64) bool {
 	return ratio >= threshold
 }
 
-func updatePingId(pinger *ping.Pinger) {
-	pinger.Id = newPingId()
-	log.Debugf("Setting new ping ID of %d", pinger.Id)
+func updatePingId(pingmon *pingMonitor) {
+	pingmon.pinger.Id = newPingId()
+	pingmon.lastIdChange = time.Now()
+	log.Debugf("Monitor %d: Setting new ping ID of %d", pingmon.id, pingmon.pinger.Id)
 }
 
 func startServer(monitors []*mon.Monitor) {
@@ -380,11 +414,14 @@ func setMonitorConfigDefaults(cfg *config.Config, mon_cfg *config.MonitorConfig)
 	if mon_cfg.Ping.Size == 0 {
 		mon_cfg.Ping.Size = cfg.Ping.Size
 	}
-	if mon_cfg.Ping.IDChangeInterval == 0 {
-		mon_cfg.Ping.IDChangeInterval = cfg.Ping.IDChangeInterval
+	if mon_cfg.Ping.IdChange.Interval == 0 {
+		mon_cfg.Ping.IdChange.Interval = cfg.Ping.IdChange.Interval
 	}
-	if mon_cfg.Ping.IDChangeThreshold == 0 {
-		mon_cfg.Ping.IDChangeThreshold = cfg.Ping.IDChangeThreshold
+	if mon_cfg.Ping.IdChange.LossThreshold == 0 {
+		mon_cfg.Ping.IdChange.LossThreshold = cfg.Ping.IdChange.LossThreshold
+	}
+	if mon_cfg.Ping.IdChange.TimeThreshold == 0 {
+		mon_cfg.Ping.IdChange.TimeThreshold = cfg.Ping.IdChange.TimeThreshold
 	}
 	if mon_cfg.DNS.Refresh == 0 {
 		mon_cfg.DNS.Refresh = cfg.DNS.Refresh
