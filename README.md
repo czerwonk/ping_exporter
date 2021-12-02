@@ -47,6 +47,64 @@ $ # use Cloudflare's public DNS server
 $ ./ping_exporter --dns.nameserver=1.1.1.1:53 [other options]
 ```
 
+### Using different settings for different targets
+
+You can create multiple independent ping monitors, each of which can have their own target list and different parameters.  To do this, instead of specifying `targets` at the top-level, instead create a `monitors` section, which contains a list of settings for each monitor.  Each monitor must have at least `targets` defined, and may also override other parameters as well, for example:
+
+```console
+dns:
+  refresh: 2m15s
+  nameserver: 1.1.1.1
+
+ping:
+  interval: 2s
+  timeout: 3s
+  history-size: 42
+  payload-size: 120
+
+monitors:
+  - targets:
+    - 8.8.8.8
+    - 8.8.4.4
+  - targets:
+    - 2001:4860:4860::8888
+    - 2001:4860:4860::8844
+    ping:
+      interval: 5s
+  - targets:
+    - google.com
+    dns:
+      refresh: 10m
+
+```
+
+Any parameters which are not specified for a given monitor will default to using the global values.
+
+### ICMP Echo ID field
+
+By default, all ping packets for all the targets in the list will be sent with the `identifier` field set to the same value (so they will all generally be seen as part of the same "ping session").  This is usually fine, but in some circumstances such as when using NAT gateways with multiple exit routes, can sometimes cause incorrect routing of some packets.
+
+If you want some targets to have a different identifier than others (so they will be considered a separate "session" by NAT gateways, etc), simply put them in different monitors (each monitor uses a different identifier by default).
+
+However, it may also be desirable to change the identifier periodically (for example, to detect changes in routing due to failover, etc).  This can be done using additional `id-change` parameters (under `ping`) as follows:
+
+```console
+  - targets:
+    - 8.8.8.8
+    - 8.8.4.4
+    ping:
+      interval: 5s
+      history-size: 20
+      id-change:
+        interval: 20s
+        loss-threshold: 0.8
+        time-threshold: 15m
+```
+
+`interval` is how frequently it will check to see if it needs to change.  It will change the ID if either the total packet loss is over the specified `loss-threshold` or if it has been longer than `time-threshold` since the last change. (Note: `loss-threshold` defaults to 0, so if it is not specified, the ID will always be changed every `interval` regardless)
+
+Note: The packet loss is calculated over *all targets* in a given monitor, so if only one target is experiencing loss but others are fine, it may not be enough to go over the threshold.  If you want to check each target's loss independently, you will need to put each one in its own monitor group.
+
 ### Exported metrics
 
 - `ping_rtt_best_ms`:          Best round trip time in millis
