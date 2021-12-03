@@ -19,7 +19,7 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-const version string = "0.4.8"
+const version string = "1.0.0"
 
 var (
 	showVersion   = kingpin.Flag("version", "Print version information").Default().Bool()
