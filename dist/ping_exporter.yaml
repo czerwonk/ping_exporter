@@ -1,0 +1,17 @@
+# List of target hosts (IP addresses or host names) to ping.
+targets:
+- 127.0.0.1
+
+dns:
+  # enforce a specific DNS server for host name lookups (optional,
+  # defaults to system resolver)
+  #nameserver: 1.1.1.1
+
+  # refresh interval for host name (optional)
+  #refresh: 2m45s
+
+ping:
+  interval:     2s # How often to ping a target?
+  timeout:      3s # Timeout for a single ICMP Echo Request
+  history-size: 42 # number of results to keep per target
+  payload-size: 56 # message size for ICMP Echo Requests
