@@ -8,7 +8,7 @@ import (
 	"time"
 
 	mon "github.com/digineo/go-ping/monitor"
-	"github.com/prometheus/common/log"
+	log "github.com/sirupsen/logrus"
 )
 
 type target struct {
