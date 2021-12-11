@@ -54,4 +54,7 @@ func TestParseConfig(t *testing.T) {
 	if expected := 120; c.Ping.Size != uint16(expected) {
 		t.Errorf("expected ping.payload-size to be %d, got %d", expected, c.Ping.Size)
 	}
+	if expected := true; c.Options.DisableIPv6 != expected {
+		t.Errorf("expected options.disable-ipv6 to be %v, got %v", expected, c.Options.DisableIPv6)
+	}
 }

@@ -23,6 +23,10 @@ type Config struct {
 		Refresh    duration `yaml:"refresh"`
 		Nameserver string   `yaml:"nameserver"`
 	} `yaml:"dns"`
+
+	Options struct {
+		DisableIPv6 bool `yaml:"disableIPv6"` // prohibits DNS resolved IPv6 addresses
+	} `yaml:"options"`
 }
 
 type duration time.Duration

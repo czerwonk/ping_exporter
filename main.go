@@ -32,6 +32,7 @@ var (
 	historySize   = kingpin.Flag("ping.history-size", "Number of results to remember per target").Default("10").Int()
 	dnsRefresh    = kingpin.Flag("dns.refresh", "Interval for refreshing DNS records and updating targets accordingly (0 if disabled)").Default("1m").Duration()
 	dnsNameServer = kingpin.Flag("dns.nameserver", "DNS server used to resolve hostname of targets").Default("").String()
+	disableIPv6   = kingpin.Flag("options.disable-ipv6", "Disable DNS from resolving IPv6 AAAA records").Default().Bool()
 	logLevel      = kingpin.Flag("log.level", "Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]").Default("info").String()
 	targets       = kingpin.Arg("targets", "A list of targets to ping").Strings()
 )
@@ -44,11 +45,9 @@ var (
 	rttMode         = kingpin.Flag("metrics.rttunit", "Export ping results as either millis (default), or seconds (best practice), or both (for migrations). Valid choices: [ms, s, both]").Default("ms").String()
 )
 
-func init() {
-	kingpin.Parse()
-}
-
 func main() {
+	kingpin.Parse()
+
 	if *showVersion {
 		printVersion()
 		os.Exit(0)
@@ -267,6 +266,9 @@ func addFlagToConfig(cfg *config.Config) {
 	}
 	if cfg.DNS.Nameserver == "" {
 		cfg.DNS.Nameserver = *dnsNameServer
+	}
+	if !cfg.Options.DisableIPv6 {
+		cfg.Options.DisableIPv6 = *disableIPv6
 	}
 }
 

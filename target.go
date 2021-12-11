@@ -11,6 +11,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// ipVersion represents the IP protocol version of an address
+type ipVersion uint8
+
 type target struct {
 	host      string
 	addresses []net.IPAddr
@@ -18,6 +21,11 @@ type target struct {
 	resolver  *net.Resolver
 	mutex     sync.Mutex
 }
+
+const (
+	ipv4 ipVersion = iota
+	ipv6
+)
 
 func (t *target) addOrUpdateMonitor(monitor *mon.Monitor) error {
 	t.mutex.Lock()
@@ -60,6 +68,7 @@ func (t *target) cleanUp(addr []net.IPAddr, monitor *mon.Monitor) {
 }
 
 func (t *target) add(addr net.IPAddr, monitor *mon.Monitor) error {
+	// TODO: If ipv6 disabled, check and skip
 	name := t.nameForIP(addr)
 	log.Infof("adding target for host %s (%v)", t.host, addr)
 
@@ -67,12 +76,7 @@ func (t *target) add(addr net.IPAddr, monitor *mon.Monitor) error {
 }
 
 func (t *target) nameForIP(addr net.IPAddr) string {
-	v := 4
-	if addr.IP.To4() == nil {
-		v = 6
-	}
-
-	return fmt.Sprintf("%s %s %d", t.host, addr.IP, v)
+	return fmt.Sprintf("%s %s %s", t.host, addr.IP, getIPVersion(addr))
 }
 
 func isIPAddrInSlice(ipa net.IPAddr, slice []net.IPAddr) bool {
@@ -83,4 +87,22 @@ func isIPAddrInSlice(ipa net.IPAddr, slice []net.IPAddr) bool {
 	}
 
 	return false
+}
+
+// getIPVersion returns the version of IP protocol used for a given address
+func getIPVersion(addr net.IPAddr) ipVersion {
+	if addr.IP.To4() == nil {
+		return ipv6
+	}
+
+	return ipv4
+}
+
+// String converts ipVersion to a string represention of the IP version used (i.e. "4" or "6")
+func (ipv ipVersion) String() string {
+	if ipv == ipv6 {
+		return "6"
+	}
+
+	return "4"
 }
