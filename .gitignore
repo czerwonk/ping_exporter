@@ -3,6 +3,7 @@
 ping_exporter
 ping_exporter.exe
 artifacts
+.vscode/**
 
 # snap
 *.snap
