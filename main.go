@@ -149,32 +149,32 @@ func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
 		}
 		targets[i] = t
 
-		err := t.addOrUpdateMonitor(monitor)
+		err := t.addOrUpdateMonitor(monitor, cfg.Options.DisableIPv6)
 		if err != nil {
 			log.Errorln(err)
 		}
 	}
 
-	go startDNSAutoRefresh(cfg.DNS.Refresh.Duration(), targets, monitor)
+	go startDNSAutoRefresh(cfg.DNS.Refresh.Duration(), targets, monitor, cfg.Options.DisableIPv6)
 
 	return monitor, nil
 }
 
-func startDNSAutoRefresh(interval time.Duration, targets []*target, monitor *mon.Monitor) {
+func startDNSAutoRefresh(interval time.Duration, targets []*target, monitor *mon.Monitor, disableIPv6 bool) {
 	if interval <= 0 {
 		return
 	}
 
 	for range time.NewTicker(interval).C {
-		refreshDNS(targets, monitor)
+		refreshDNS(targets, monitor, disableIPv6)
 	}
 }
 
-func refreshDNS(targets []*target, monitor *mon.Monitor) {
+func refreshDNS(targets []*target, monitor *mon.Monitor, disableIPv6 bool) {
 	log.Infoln("refreshing DNS")
 	for _, t := range targets {
 		go func(ta *target) {
-			err := ta.addOrUpdateMonitor(monitor)
+			err := ta.addOrUpdateMonitor(monitor, disableIPv6)
 			if err != nil {
 				log.Errorf("could not refresh dns: %v", err)
 			}

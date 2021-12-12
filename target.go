@@ -28,7 +28,7 @@ const (
 	ipv6 ipVersion = 6
 )
 
-func (t *target) addOrUpdateMonitor(monitor *mon.Monitor) error {
+func (t *target) addOrUpdateMonitor(monitor *mon.Monitor, disableIPv6 bool) error {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
@@ -37,15 +37,29 @@ func (t *target) addOrUpdateMonitor(monitor *mon.Monitor) error {
 		return fmt.Errorf("error resolving target: %w", err)
 	}
 
-	for _, addr := range addrs {
+	var sanitizedAddrs []net.IPAddr
+	if disableIPv6 {
+		for _, addr := range addrs {
+			if getIPVersion(addr) == ipv6 {
+				log.Infof("IPv6 disabled: skipping target for host %s (%v)", t.host, addr)
+				continue
+			}
+			sanitizedAddrs = append(sanitizedAddrs, addr)
+		}
+	} else {
+		sanitizedAddrs = addrs
+	}
+
+	for _, addr := range sanitizedAddrs {
+
 		err := t.addIfNew(addr, monitor)
 		if err != nil {
 			return err
 		}
 	}
 
-	t.cleanUp(addrs, monitor)
-	t.addresses = addrs
+	t.cleanUp(sanitizedAddrs, monitor)
+	t.addresses = sanitizedAddrs
 
 	return nil
 }
