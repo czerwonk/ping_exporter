@@ -128,7 +128,7 @@ func Test_target_nameForIP(t *testing.T) {
 			"testhost.com 142.250.72.206 4",
 		},
 		{
-			"ipv4-google",
+			"ipv6-google",
 			ipv6AddrGoogle[0],
 			"testhost.com 2607:f8b0:4005:810::200e 6",
 		},

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strconv"
 	"sync"
 	"time"
 
@@ -23,8 +24,8 @@ type target struct {
 }
 
 const (
-	ipv4 ipVersion = iota
-	ipv6
+	ipv4 ipVersion = 4
+	ipv6 ipVersion = 6
 )
 
 func (t *target) addOrUpdateMonitor(monitor *mon.Monitor) error {
@@ -100,9 +101,5 @@ func getIPVersion(addr net.IPAddr) ipVersion {
 
 // String converts ipVersion to a string represention of the IP version used (i.e. "4" or "6")
 func (ipv ipVersion) String() string {
-	if ipv == ipv6 {
-		return "6"
-	}
-
-	return "4"
+	return strconv.Itoa(int(ipv))
 }
