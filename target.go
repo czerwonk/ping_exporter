@@ -83,7 +83,6 @@ func (t *target) cleanUp(addr []net.IPAddr, monitor *mon.Monitor) {
 }
 
 func (t *target) add(addr net.IPAddr, monitor *mon.Monitor) error {
-	// TODO: If ipv6 disabled, check and skip
 	name := t.nameForIP(addr)
 	log.Infof("adding target for host %s (%v)", t.host, addr)
 
