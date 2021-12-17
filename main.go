@@ -55,6 +55,7 @@ func main() {
 	}
 
 	setLogLevel(*logLevel)
+	log.SetReportCaller(true)
 
 	switch *deprecatedMetrics {
 	case "enable":
