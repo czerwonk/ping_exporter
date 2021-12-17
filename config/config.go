@@ -17,11 +17,41 @@ type Config struct {
 		Timeout  duration `yaml:"timeout"`
 		History  int      `yaml:"history-size"`
 		Size     uint16   `yaml:"payload-size"`
+		IdChange struct {
+			Interval      duration `yaml:"interval"`
+			LossThreshold float64  `yaml:"loss-threshold"`
+			TimeThreshold duration `yaml:"time-threshold"`
+		} `yaml:"id-change"`
 	} `yaml:"ping"`
 
 	DNS struct {
 		Refresh    duration `yaml:"refresh"`
 		Nameserver string   `yaml:"nameserver"`
+	} `yaml:"dns"`
+
+	Monitors []MonitorConfig `yaml:"monitors"`
+}
+
+// This is the struct for a sub-entry under the `monitors` section.  We support
+// all the same fields as at the top level, except for nameserver, and
+// (obviously) not the `monitors` field within sub-entries.
+type MonitorConfig struct {
+	Targets []string `yaml:"targets"`
+
+	Ping struct {
+		Interval duration `yaml:"interval"`
+		Timeout  duration `yaml:"timeout"`
+		History  int      `yaml:"history-size"`
+		Size     uint16   `yaml:"payload-size"`
+		IdChange struct {
+			Interval      duration `yaml:"interval"`
+			LossThreshold float64  `yaml:"loss-threshold"`
+			TimeThreshold duration `yaml:"time-threshold"`
+		} `yaml:"id-change"`
+	} `yaml:"ping"`
+
+	DNS struct {
+		Refresh duration `yaml:"refresh"`
 	} `yaml:"dns"`
 }
 
