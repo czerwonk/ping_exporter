@@ -19,7 +19,7 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-const version string = "0.4.8"
+const version string = "1.0.0"
 
 var (
 	showVersion   = kingpin.Flag("version", "Print version information").Default().Bool()
@@ -39,10 +39,10 @@ var (
 
 var (
 	enableDeprecatedMetrics = true // default may change in future
-	deprecatedMetrics       = kingpin.Flag("metrics.deprecated", "Enable or disable deprecated metrics (`ping_rtt_ms{type=best|worst|mean|std_dev}`). Valid choices: [enable, disable]").Default("enable").String()
+	deprecatedMetrics       = kingpin.Flag("metrics.deprecated", "Enable or disable deprecated metrics (`ping_rtt_ms{type=best|worst|mean|std_dev}`). Valid choices: [enable, disable]").Default("disable").String()
 
 	rttMetricsScale = rttInMills // might change in future
-	rttMode         = kingpin.Flag("metrics.rttunit", "Export ping results as either millis (default), or seconds (best practice), or both (for migrations). Valid choices: [ms, s, both]").Default("ms").String()
+	rttMode         = kingpin.Flag("metrics.rttunit", "Export ping results as either seconds (default), or milliseconds (deprecated), or both (for migrations). Valid choices: [s, ms, both]").Default("s").String()
 )
 
 func main() {
