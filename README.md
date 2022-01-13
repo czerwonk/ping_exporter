@@ -34,6 +34,9 @@ ping:
   timeout: 3s
   history-size: 42
   payload-size: 120
+
+options:
+  disableIPv6: false
 ```
 
 Note: domains are resolved (regularly) to their corresponding A and AAAA
