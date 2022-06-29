@@ -10,7 +10,7 @@ import (
 
 // Config represents configuration for the exporter.
 type Config struct {
-	Targets []string `yaml:"targets"`
+	Targets []interface{} `yaml:"targets"`
 
 	Ping struct {
 		Interval duration `yaml:"interval"`

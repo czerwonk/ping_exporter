@@ -141,8 +141,25 @@ func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
 
 	targets := make([]*target, len(cfg.Targets))
 	for i, host := range cfg.Targets {
+		var hostname string
+		switch v := host.(type) {
+		case string:
+			hostname = v
+			labelConfigs[hostname] = nil
+		case map[interface{}]interface{}:
+			for h, l := range v {
+				hostname = fmt.Sprintf("%v", h)
+				labelConfigs[hostname] = make(map[string]string, 0)
+				for lk, lv := range l.(map[interface{}]interface{}) {
+					labelConfigs[hostname][fmt.Sprintf("%v", lk)] = fmt.Sprintf("%v", lv)
+				}
+			}
+		default:
+			fmt.Printf("I don't know about type %T!\n", v)
+		}
+
 		t := &target{
-			host:      host,
+			host:      hostname,
 			addresses: make([]net.IPAddr, 0),
 			delay:     time.Duration(10*i) * time.Millisecond,
 			resolver:  resolver,
@@ -247,7 +264,10 @@ func setupResolver(cfg *config.Config) *net.Resolver {
 // config has non-zero values.
 func addFlagToConfig(cfg *config.Config) {
 	if len(cfg.Targets) == 0 {
-		cfg.Targets = *targets
+		cfg.Targets = make([]interface{}, len(*targets))
+		for i := range *targets {
+			cfg.Targets[i] = (*targets)[i]
+		}
 	}
 	if cfg.Ping.History == 0 {
 		cfg.Ping.History = *historySize
