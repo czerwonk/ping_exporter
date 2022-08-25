@@ -1,7 +1,8 @@
 replicaCount: 1
 
 image:
-  repository: czerwonk/ping_exporter
+#  repository: czerwonk/ping_exporter
+  repository: simplygoodsoftware/ping-exporter
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
@@ -13,7 +14,7 @@ fullnameOverride: ""
 
 serviceAccount:
   # Specifies whether a service account should be created
-  create: true
+  create: false
   # Annotations to add to the service account
   annotations: {}
   # The name of the service account to use.
@@ -44,7 +45,7 @@ service:
 
 ingress:
   enabled: false
-  className: ""
+  className: "ph"
   annotations: {}
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
@@ -79,15 +80,8 @@ args: []
 
 # The 'config' block contains the contents of the YAML based config file.
 config:
-  targets:
-    - 8.8.8.8
-    - 8.8.4.4
-    - 2001:4860:4860::8888
-    - 2001:4860:4860::8844
-    - google.com
-
   dns:
-    refresh: 2m15s
+    refresh: 10m15s
     nameserver: 1.1.1.1
 
   ping:
@@ -95,3 +89,7 @@ config:
     timeout: 3s
     history-size: 42
     payload-size: 120
+
+configAdditionalAddresses:
+  google-dns:
+  - 8.8.8.8

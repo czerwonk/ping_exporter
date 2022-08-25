@@ -16,11 +16,12 @@ import (
 type ipVersion uint8
 
 type target struct {
-	host      string
-	addresses []net.IPAddr
-	delay     time.Duration
-	resolver  *net.Resolver
-	mutex     sync.Mutex
+	addressScopeName string
+	host             string
+	addresses        []net.IPAddr
+	delay            time.Duration
+	resolver         *net.Resolver
+	mutex            sync.Mutex
 }
 
 const (
@@ -51,7 +52,6 @@ func (t *target) addOrUpdateMonitor(monitor *mon.Monitor, disableIPv6 bool) erro
 	}
 
 	for _, addr := range sanitizedAddrs {
-
 		err := t.addIfNew(addr, monitor)
 		if err != nil {
 			return err
@@ -84,9 +84,9 @@ func (t *target) cleanUp(addr []net.IPAddr, monitor *mon.Monitor) {
 
 func (t *target) add(addr net.IPAddr, monitor *mon.Monitor) error {
 	name := t.nameForIP(addr)
-	log.Infof("adding target for host %s (%v)", t.host, addr)
+	log.Infof("adding target for host %s (%v)", t.host+" "+t.addressScopeName, addr)
 
-	return monitor.AddTargetDelayed(name, addr, t.delay)
+	return monitor.AddTargetDelayed(name+" "+t.addressScopeName, addr, t.delay)
 }
 
 func (t *target) nameForIP(addr net.IPAddr) string {

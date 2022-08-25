@@ -13,7 +13,7 @@ func newDesc(name, help string, variableLabels []string, constLabels prometheus.
 }
 
 var (
-	labelNames = []string{"target", "ip", "ip_version"}
+	labelNames = []string{"target", "ip", "ip_version", "address_scope"}
 	rttDesc    = newScaledDesc("rtt", "Round trip time", append(labelNames, "type"))
 	bestDesc   = newScaledDesc("rtt_best", "Best round trip time", labelNames)
 	worstDesc  = newScaledDesc("rtt_worst", "Worst round trip time", labelNames)
@@ -52,7 +52,7 @@ func (p *pingCollector) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(progDesc, prometheus.GaugeValue, 1)
 
 	for target, metrics := range p.metrics {
-		l := strings.SplitN(target, " ", 3)
+		l := strings.SplitN(target, " ", 4)
 
 		if metrics.PacketsSent > metrics.PacketsLost {
 			if enableDeprecatedMetrics {

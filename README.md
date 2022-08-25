@@ -1,3 +1,50 @@
+# Особенности билда для Pyrus
+Текущая директория является форком с репозитория https://github.com/czerwonk/ping_exporter с тега 1.0.0
+Экспортер модифицирован:
+1. изменен формат записи для секции targets в бумажном конфиге:
+старый формат:
+```yaml
+targets:
+  - 8.8.8.8
+  - 8.8.4.4
+  - 2001:4860:4860::8888
+  - 2001:4860:4860::8844
+  - google.com
+```
+новый формат:
+```yaml
+targets:
+  yandex:
+  - ya.ru
+  googledns:
+  - 8.8.8.8
+  - 8.8.4.4
+```
+2. изменен формат вывода метрик прометея:
+старый формат:
+```yaml
+ping_rtt_mean_seconds{ip="8.8.4.4",ip_version="4",target="8.8.4.4"} 0.025717056274414063
+```
+новый формат:
+```yaml
+ping_rtt_mean_seconds{address_scope="googledns",ip="8.8.4.4",ip_version="4",target="8.8.4.4"} 0.025717056274414063
+```
+3. в связи с тем, что экспортеру требуется теперь форматированный словарь для списка таргетов, убрана возможность объявления таргетов через аргументы командной строки
+Пожалуйста, используйте для конфигурации бумажный конфиг, объявленный через --config.path
+```yaml
+./ping_exporter --config.path=/tmp/config.yaml
+```
+
+Для сборки образа с экспортером вам нужно запустить в директории Pyrus.PingExporter
+```yaml
+docker build -t <тут могло быть имя вашего образа> ./
+```
+
+Для деплоя хельмчарта вам надо сделать вот так в директории Pyrus.PingExporter
+```yaml
+helm install ping-exporter dist/charts/ping-exporter/
+```
+
 # ping_exporter
 [![Test results](https://github.com/github.com/czerwonk/ping_exporter/workflows/Test/badge.svg)](https://github.com/github.com/czerwonk/ping_exporter/actions?query=workflow%3ATest)
 [![Docker Build Status](https://img.shields.io/docker/cloud/build/czerwonk/ping_exporter.svg)](https://hub.docker.com/r/czerwonk/ping_exporter/builds)
@@ -172,7 +219,7 @@ NAME: ping-exporter
 | serviceAccount.create | bool | `true` | Create a service account for the application  |
 | serviceAccount.annotations | object | `{}` | Annotations applied to created service account |
 | serviceAccount.name | string | `""` | Overrides the application's service account name which defaults to `"ping-exporter.fullname"` |
-| tolerations | list | `[]` | [Tolerations] | 
+| tolerations | list | `[]` | [Tolerations] |
 
 
 ## Changes from previous versions

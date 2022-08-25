@@ -1,0 +1,13 @@
+dns:
+  nameserver: 1.1.1.1
+  refresh: 2m15s
+ping:
+  history-size: 42
+  interval: 2s
+  payload-size: 120
+  timeout: 3s
+targets:
+  testscope:
+  - 8.8.8.8
+  - 8.8.4.4
+  - 1.1.1.1

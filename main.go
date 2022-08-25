@@ -34,7 +34,6 @@ var (
 	dnsNameServer = kingpin.Flag("dns.nameserver", "DNS server used to resolve hostname of targets").Default("").String()
 	disableIPv6   = kingpin.Flag("options.disable-ipv6", "Disable DNS from resolving IPv6 AAAA records").Default().Bool()
 	logLevel      = kingpin.Flag("log.level", "Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]").Default("info").String()
-	targets       = kingpin.Arg("targets", "A list of targets to ping").Strings()
 )
 
 var (
@@ -101,7 +100,6 @@ func main() {
 		log.Errorln(err)
 		os.Exit(2)
 	}
-
 	startServer(m)
 }
 
@@ -139,19 +137,23 @@ func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
 		cfg.Ping.Timeout.Duration())
 	monitor.HistorySize = cfg.Ping.History
 
-	targets := make([]*target, len(cfg.Targets))
-	for i, host := range cfg.Targets {
-		t := &target{
-			host:      host,
-			addresses: make([]net.IPAddr, 0),
-			delay:     time.Duration(10*i) * time.Millisecond,
-			resolver:  resolver,
-		}
-		targets[i] = t
-
-		err := t.addOrUpdateMonitor(monitor, cfg.Options.DisableIPv6)
-		if err != nil {
-			log.Errorln(err)
+	targets := make([]*target, 0)
+	counter := 0
+	for targetKey, targetValues := range cfg.Targets {
+		for _, localAddress := range targetValues {
+			t := &target{
+				addressScopeName: targetKey,
+				host:             localAddress,
+				addresses:        make([]net.IPAddr, 0),
+				delay:            time.Duration(10*counter) * time.Millisecond,
+				resolver:         resolver,
+			}
+			targets = append(targets, t)
+			counter += 1
+			err := t.addOrUpdateMonitor(monitor, cfg.Options.DisableIPv6)
+			if err != nil {
+				log.Errorln(err)
+			}
 		}
 	}
 
@@ -246,9 +248,6 @@ func setupResolver(cfg *config.Config) *net.Resolver {
 // addFlagToConfig updates cfg with command line flag values, unless the
 // config has non-zero values.
 func addFlagToConfig(cfg *config.Config) {
-	if len(cfg.Targets) == 0 {
-		cfg.Targets = *targets
-	}
 	if cfg.Ping.History == 0 {
 		cfg.Ping.History = *historySize
 	}

@@ -7,3 +7,15 @@ metadata:
 data:
   config.yml: |
 {{ toYaml .Values.config | indent 4 }}
+    targets:
+{{- range $index, $node := (lookup "v1" "Node" "" "").items }}
+{{- $node.metadata.name | nindent 6 }}:
+    {{- range $index2, $address2 := $node.status.addresses }}
+        {{- if or (eq $address2.type "ExternalIP") (eq $address2.type "InternalIP") }}
+            {{- print "- " $address2.address | nindent 6 }}
+        {{- end }}
+    {{- end }}
+{{- end }}
+{{- if  .Values.configAdditionalAddresses }}
+    {{- toYaml .Values.configAdditionalAddresses | nindent 6 }}
+{{- end}}
