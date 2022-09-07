@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net"
 	"net/http"
@@ -22,19 +24,24 @@ import (
 const version string = "1.0.0"
 
 var (
-	showVersion   = kingpin.Flag("version", "Print version information").Default().Bool()
-	listenAddress = kingpin.Flag("web.listen-address", "Address on which to expose metrics and web interface").Default(":9427").String()
-	metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics").Default("/metrics").String()
-	configFile    = kingpin.Flag("config.path", "Path to config file").Default("").String()
-	pingInterval  = kingpin.Flag("ping.interval", "Interval for ICMP echo requests").Default("5s").Duration()
-	pingTimeout   = kingpin.Flag("ping.timeout", "Timeout for ICMP echo request").Default("4s").Duration()
-	pingSize      = kingpin.Flag("ping.size", "Payload size for ICMP echo requests").Default("56").Uint16()
-	historySize   = kingpin.Flag("ping.history-size", "Number of results to remember per target").Default("10").Int()
-	dnsRefresh    = kingpin.Flag("dns.refresh", "Interval for refreshing DNS records and updating targets accordingly (0 if disabled)").Default("1m").Duration()
-	dnsNameServer = kingpin.Flag("dns.nameserver", "DNS server used to resolve hostname of targets").Default("").String()
-	disableIPv6   = kingpin.Flag("options.disable-ipv6", "Disable DNS from resolving IPv6 AAAA records").Default().Bool()
-	logLevel      = kingpin.Flag("log.level", "Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]").Default("info").String()
-	targets       = kingpin.Arg("targets", "A list of targets to ping").Strings()
+	showVersion             = kingpin.Flag("version", "Print version information").Default().Bool()
+	listenAddress           = kingpin.Flag("web.listen-address", "Address on which to expose metrics and web interface").Default(":9427").String()
+	metricsPath             = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics").Default("/metrics").String()
+	serverUseTLS            = kingpin.Flag("web.tls.enabled", "Enable TLS for web server, default is false").Default().Bool()
+	serverTlsCertFile       = kingpin.Flag("web.tls.cert-file", "The certificate file for the web server").Default("").String()
+	serverTlsKeyFile        = kingpin.Flag("web.tls.key-file", "The key file for the web server").Default("").String()
+	serverMutualAuthEnabled = kingpin.Flag("web.tls.mutual-auth-enabled", "Enable TLS client mutual authentication, default is false").Default().Bool()
+	serverTlsCAFile         = kingpin.Flag("web.tls.ca-file", "The certificate authority file for client's certificate verification").Default("").String()
+	configFile              = kingpin.Flag("config.path", "Path to config file").Default("").String()
+	pingInterval            = kingpin.Flag("ping.interval", "Interval for ICMP echo requests").Default("5s").Duration()
+	pingTimeout             = kingpin.Flag("ping.timeout", "Timeout for ICMP echo request").Default("4s").Duration()
+	pingSize                = kingpin.Flag("ping.size", "Payload size for ICMP echo requests").Default("56").Uint16()
+	historySize             = kingpin.Flag("ping.history-size", "Number of results to remember per target").Default("10").Int()
+	dnsRefresh              = kingpin.Flag("dns.refresh", "Interval for refreshing DNS records and updating targets accordingly (0 if disabled)").Default("1m").Duration()
+	dnsNameServer           = kingpin.Flag("dns.nameserver", "DNS server used to resolve hostname of targets").Default("").String()
+	disableIPv6             = kingpin.Flag("options.disable-ipv6", "Disable DNS from resolving IPv6 AAAA records").Default().Bool()
+	logLevel                = kingpin.Flag("log.level", "Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]").Default("info").String()
+	targets                 = kingpin.Arg("targets", "A list of targets to ping").Strings()
 )
 
 var (
@@ -183,6 +190,8 @@ func refreshDNS(targets []*target, monitor *mon.Monitor, disableIPv6 bool) {
 }
 
 func startServer(monitor *mon.Monitor) {
+	var err error
+
 	log.Infof("Starting ping exporter (Version: %s)", version)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, indexHTML, *metricsPath)
@@ -200,8 +209,54 @@ func startServer(monitor *mon.Monitor) {
 	})
 	http.Handle(*metricsPath, h)
 
-	log.Infof("Listening for %s on %s", *metricsPath, *listenAddress)
-	log.Fatal(http.ListenAndServe(*listenAddress, nil))
+	server := http.Server{
+		Addr: *listenAddress,
+	}
+
+	if *serverUseTLS {
+		if *serverTlsCertFile == "" || *serverTlsKeyFile == "" {
+			log.Error("'web.tls.cert-file' and 'web.tls.key-file' must be defined")
+			return
+		}
+
+		server.TLSConfig = &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+
+		server.TLSConfig.Certificates = make([]tls.Certificate, 1)
+		server.TLSConfig.Certificates[0], err = tls.LoadX509KeyPair(*serverTlsCertFile, *serverTlsKeyFile)
+		if err != nil {
+			log.Errorf("Loading certificates error: %v", err)
+			return
+		}
+
+		if *serverMutualAuthEnabled {
+			server.TLSConfig.ClientAuth = tls.RequireAndVerifyClientCert
+
+			if *serverTlsCAFile != "" {
+				var ca []byte
+				if ca, err = os.ReadFile(*serverTlsCAFile); err != nil {
+					log.Errorf("Loading CA error: %v", err)
+					return
+				} else {
+					server.TLSConfig.ClientCAs = x509.NewCertPool()
+					server.TLSConfig.ClientCAs.AppendCertsFromPEM(ca)
+				}
+			}
+		} else {
+			server.TLSConfig.ClientAuth = tls.NoClientCert
+		}
+
+		log.Infof("Listening for %s on %s (HTTPS)", *metricsPath, *listenAddress)
+		err = server.ListenAndServeTLS("", "")
+	} else {
+		log.Infof("Listening for %s on %s (HTTP)", *metricsPath, *listenAddress)
+		err = server.ListenAndServe()
+	}
+
+	if err != nil && err != http.ErrServerClosed {
+		log.Fatal(err)
+	}
 }
 
 func loadConfig() (*config.Config, error) {
