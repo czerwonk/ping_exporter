@@ -22,6 +22,12 @@ serviceAccount:
 
 podAnnotations: {}
 
+podLabels: {}
+
+# Rollout strategy, could be "Recreate" or "RollingUpdate"
+strategy:
+  type: RollingUpdate
+
 podSecurityContext: {}
   # fsGroup: 2000
 
