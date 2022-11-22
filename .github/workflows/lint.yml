@@ -37,6 +37,4 @@ jobs:
           go mod download
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v2
-        with:
-          version: v1.38
+        uses: golangci/golangci-lint-action@v3.3.1
