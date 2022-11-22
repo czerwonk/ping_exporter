@@ -25,8 +25,8 @@ builds:
       - hardfloat
       - softfloat
     goarm:
-      - 6
-      - 7
+      - "6"
+      - "7"
     ignore:
       # pretty sure all 64bit MIPS chips have a FPU
       - { goarch: mips64,   gomips: softfloat }
@@ -78,8 +78,8 @@ nfpms:
       - src: dist/ping_exporter.d/systemd-*.conf
         dst: /usr/local/share/ping_exporter/
 
-    empty_folders:
-      - /run/systemd/system/ping_exporter.service.d
+      - dst: /run/systemd/system/ping_exporter.service.d
+        type: dir
 
     overrides:
       deb:
