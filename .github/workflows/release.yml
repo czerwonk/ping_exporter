@@ -10,7 +10,7 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     env:
-      GO_VERSION: "1.17"
+      GO_VERSION: "1.19"
     steps:
       - name: Checkout code
         uses: actions/checkout@v2

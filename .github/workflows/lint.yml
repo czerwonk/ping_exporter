@@ -8,7 +8,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     env:
-      GO_VERSION: "1.17"
+      GO_VERSION: "1.19"
     steps:
       - name: Set up Go ${{ env.GO_VERSION }}
         uses: actions/setup-go@v2
