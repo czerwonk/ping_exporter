@@ -214,39 +214,7 @@ func startServer(monitor *mon.Monitor) {
 	}
 
 	if *serverUseTLS {
-		if *serverTlsCertFile == "" || *serverTlsKeyFile == "" {
-			log.Error("'web.tls.cert-file' and 'web.tls.key-file' must be defined")
-			return
-		}
-
-		server.TLSConfig = &tls.Config{
-			MinVersion: tls.VersionTLS12,
-		}
-
-		server.TLSConfig.Certificates = make([]tls.Certificate, 1)
-		server.TLSConfig.Certificates[0], err = tls.LoadX509KeyPair(*serverTlsCertFile, *serverTlsKeyFile)
-		if err != nil {
-			log.Errorf("Loading certificates error: %v", err)
-			return
-		}
-
-		if *serverMutualAuthEnabled {
-			server.TLSConfig.ClientAuth = tls.RequireAndVerifyClientCert
-
-			if *serverTlsCAFile != "" {
-				var ca []byte
-				if ca, err = os.ReadFile(*serverTlsCAFile); err != nil {
-					log.Errorf("Loading CA error: %v", err)
-					return
-				} else {
-					server.TLSConfig.ClientCAs = x509.NewCertPool()
-					server.TLSConfig.ClientCAs.AppendCertsFromPEM(ca)
-				}
-			}
-		} else {
-			server.TLSConfig.ClientAuth = tls.NoClientCert
-		}
-
+		confureTLS(&server)
 		log.Infof("Listening for %s on %s (HTTPS)", *metricsPath, *listenAddress)
 		err = server.ListenAndServeTLS("", "")
 	} else {
@@ -256,6 +224,42 @@ func startServer(monitor *mon.Monitor) {
 
 	if err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
+	}
+}
+
+func confureTLS(server *http.Server) {
+	if *serverTlsCertFile == "" || *serverTlsKeyFile == "" {
+		log.Error("'web.tls.cert-file' and 'web.tls.key-file' must be defined")
+		return
+	}
+
+	server.TLSConfig = &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	}
+
+	var err error
+	server.TLSConfig.Certificates = make([]tls.Certificate, 1)
+	server.TLSConfig.Certificates[0], err = tls.LoadX509KeyPair(*serverTlsCertFile, *serverTlsKeyFile)
+	if err != nil {
+		log.Errorf("Loading certificates error: %v", err)
+		return
+	}
+
+	if *serverMutualAuthEnabled {
+		server.TLSConfig.ClientAuth = tls.RequireAndVerifyClientCert
+
+		if *serverTlsCAFile != "" {
+			var ca []byte
+			if ca, err = os.ReadFile(*serverTlsCAFile); err != nil {
+				log.Errorf("Loading CA error: %v", err)
+				return
+			} else {
+				server.TLSConfig.ClientCAs = x509.NewCertPool()
+				server.TLSConfig.ClientCAs.AppendCertsFromPEM(ca)
+			}
+		}
+	} else {
+		server.TLSConfig.ClientAuth = tls.NoClientCert
 	}
 }
 
