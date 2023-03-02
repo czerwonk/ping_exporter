@@ -332,6 +332,9 @@ func addFlagToConfig(cfg *config.Config) {
 	if !cfg.Options.DisableIPv6 {
 		cfg.Options.DisableIPv6 = *disableIPv6
 	}
+	if !cfg.Options.DisableIPv4 {
+		cfg.Options.DisableIPv4 = *disableIPv4
+	}
 }
 
 const indexHTML = `<!doctype html>
