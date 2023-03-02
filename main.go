@@ -42,6 +42,7 @@ var (
 	dnsRefresh              = kingpin.Flag("dns.refresh", "Interval for refreshing DNS records and updating targets accordingly (0 if disabled)").Default("1m").Duration()
 	dnsNameServer           = kingpin.Flag("dns.nameserver", "DNS server used to resolve hostname of targets").Default("").String()
 	disableIPv6             = kingpin.Flag("options.disable-ipv6", "Disable DNS from resolving IPv6 AAAA records").Default().Bool()
+	disableIPv4             = kingpin.Flag("options.disable-ipv4", "Disable DNS from resolving IPv4 A records").Default().Bool()
 	logLevel                = kingpin.Flag("log.level", "Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]").Default("info").String()
 	targets                 = kingpin.Arg("targets", "A list of targets to ping").Strings()
 )
@@ -158,32 +159,32 @@ func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
 		}
 		targets[i] = t
 
-		err := t.addOrUpdateMonitor(monitor, cfg.Options.DisableIPv6)
+		err := t.addOrUpdateMonitor(monitor, cfg.Options.DisableIPv6, cfg.Options.DisableIPv4)
 		if err != nil {
 			log.Errorln(err)
 		}
 	}
 
-	go startDNSAutoRefresh(cfg.DNS.Refresh.Duration(), targets, monitor, cfg.Options.DisableIPv6)
+	go startDNSAutoRefresh(cfg.DNS.Refresh.Duration(), targets, monitor, cfg.Options.DisableIPv6, cfg.Options.DisableIPv4)
 
 	return monitor, nil
 }
 
-func startDNSAutoRefresh(interval time.Duration, targets []*target, monitor *mon.Monitor, disableIPv6 bool) {
+func startDNSAutoRefresh(interval time.Duration, targets []*target, monitor *mon.Monitor, disableIPv6 bool, disableIPv4 bool) {
 	if interval <= 0 {
 		return
 	}
 
 	for range time.NewTicker(interval).C {
-		refreshDNS(targets, monitor, disableIPv6)
+		refreshDNS(targets, monitor, disableIPv6, disableIPv4)
 	}
 }
 
-func refreshDNS(targets []*target, monitor *mon.Monitor, disableIPv6 bool) {
+func refreshDNS(targets []*target, monitor *mon.Monitor, disableIPv6 bool, disableIPv4 bool) {
 	log.Infoln("refreshing DNS")
 	for _, t := range targets {
 		go func(ta *target) {
-			err := ta.addOrUpdateMonitor(monitor, disableIPv6)
+			err := ta.addOrUpdateMonitor(monitor, disableIPv6, disableIPv4)
 			if err != nil {
 				log.Errorf("could not refresh dns: %v", err)
 			}
