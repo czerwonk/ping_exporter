@@ -25,12 +25,17 @@ type target struct {
 	mutex     sync.Mutex
 }
 
+type targetOpts struct {
+	disableIPv4 bool
+	disableIPv6 bool
+}
+
 const (
 	ipv4 ipVersion = 4
 	ipv6 ipVersion = 6
 )
 
-func (t *target) addOrUpdateMonitor(monitor *mon.Monitor, disableIPv6 bool, disableIPv4 bool) error {
+func (t *target) addOrUpdateMonitor(monitor *mon.Monitor, opts targetOpts) error {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
@@ -41,11 +46,11 @@ func (t *target) addOrUpdateMonitor(monitor *mon.Monitor, disableIPv6 bool, disa
 
 	var sanitizedAddrs []net.IPAddr
 	for _, addr := range addrs {
-		if getIPVersion(addr) == ipv6 && disableIPv6 {
+		if getIPVersion(addr) == ipv6 && opts.disableIPv6 {
 			log.Infof("IPv6 disabled: skipping target for host %s (%v)", t.host, addr)
 			continue
 		}
-		if getIPVersion(addr) == ipv4 && disableIPv4 {
+		if getIPVersion(addr) == ipv4 && opts.disableIPv4 {
 			log.Infof("IPv4 disabled: skipping target for host %s (%v)", t.host, addr)
 			continue
 		}
@@ -53,7 +58,6 @@ func (t *target) addOrUpdateMonitor(monitor *mon.Monitor, disableIPv6 bool, disa
 	}
 
 	for _, addr := range sanitizedAddrs {
-
 		err := t.addIfNew(addr, monitor)
 		if err != nil {
 			return err
