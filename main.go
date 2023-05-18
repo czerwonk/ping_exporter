@@ -13,10 +13,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/czerwonk/ping_exporter/config"
 	"github.com/digineo/go-ping"
 	mon "github.com/digineo/go-ping/monitor"
 	"tailscale.com/client/tailscale"
+
+	"github.com/czerwonk/ping_exporter/config"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -24,7 +25,7 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-const version string = "1.0.1"
+const version string = "1.1.0"
 
 var (
 	showVersion             = kingpin.Flag("version", "Print version information").Default().Bool()
@@ -43,6 +44,7 @@ var (
 	dnsRefresh              = kingpin.Flag("dns.refresh", "Interval for refreshing DNS records and updating targets accordingly (0 if disabled)").Default("1m").Duration()
 	dnsNameServer           = kingpin.Flag("dns.nameserver", "DNS server used to resolve hostname of targets").Default("").String()
 	disableIPv6             = kingpin.Flag("options.disable-ipv6", "Disable DNS from resolving IPv6 AAAA records").Default().Bool()
+	disableIPv4             = kingpin.Flag("options.disable-ipv4", "Disable DNS from resolving IPv4 A records").Default().Bool()
 	logLevel                = kingpin.Flag("log.level", "Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]").Default("info").String()
 	targets                 = kingpin.Arg("targets", "A list of targets to ping").Strings()
 
@@ -133,7 +135,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	startServer(m)
+	startServer(cfg, m)
 }
 
 func printVersion() {
@@ -171,41 +173,47 @@ func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
 	monitor.HistorySize = cfg.Ping.History
 
 	targets := make([]*target, len(cfg.Targets))
-	for i, host := range cfg.Targets {
+	for i, t := range cfg.Targets {
 		t := &target{
-			host:      host,
+			host:      t.Addr,
 			addresses: make([]net.IPAddr, 0),
 			delay:     time.Duration(10*i) * time.Millisecond,
 			resolver:  resolver,
 		}
 		targets[i] = t
 
-		err := t.addOrUpdateMonitor(monitor, cfg.Options.DisableIPv6)
+		err := t.addOrUpdateMonitor(monitor, targetOpts{
+			disableIPv4: cfg.Options.DisableIPv4,
+			disableIPv6: cfg.Options.DisableIPv6,
+		})
 		if err != nil {
 			log.Errorln(err)
 		}
 	}
 
-	go startDNSAutoRefresh(cfg.DNS.Refresh.Duration(), targets, monitor, cfg.Options.DisableIPv6)
+	go startDNSAutoRefresh(cfg.DNS.Refresh.Duration(), targets, monitor, cfg)
 
 	return monitor, nil
 }
 
-func startDNSAutoRefresh(interval time.Duration, targets []*target, monitor *mon.Monitor, disableIPv6 bool) {
+func startDNSAutoRefresh(interval time.Duration, targets []*target, monitor *mon.Monitor, cfg *config.Config) {
 	if interval <= 0 {
 		return
 	}
 
 	for range time.NewTicker(interval).C {
-		refreshDNS(targets, monitor, disableIPv6)
+		refreshDNS(targets, monitor, cfg)
 	}
 }
 
-func refreshDNS(targets []*target, monitor *mon.Monitor, disableIPv6 bool) {
+func refreshDNS(targets []*target, monitor *mon.Monitor, cfg *config.Config) {
 	log.Infoln("refreshing DNS")
 	for _, t := range targets {
 		go func(ta *target) {
-			err := ta.addOrUpdateMonitor(monitor, disableIPv6)
+			err := ta.addOrUpdateMonitor(monitor, targetOpts{
+				disableIPv4: cfg.Options.DisableIPv4,
+				disableIPv6: cfg.Options.DisableIPv6,
+			})
 			if err != nil {
 				log.Errorf("could not refresh dns: %v", err)
 			}
@@ -213,16 +221,19 @@ func refreshDNS(targets []*target, monitor *mon.Monitor, disableIPv6 bool) {
 	}
 }
 
-func startServer(monitor *mon.Monitor) {
+func startServer(cfg *config.Config, monitor *mon.Monitor) {
 	var err error
-
 	log.Infof("Starting ping exporter (Version: %s)", version)
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprintf(w, indexHTML, *metricsPath)
 	})
 
 	reg := prometheus.NewRegistry()
-	reg.MustRegister(&pingCollector{monitor: monitor})
+	reg.MustRegister(&pingCollector{
+		cfg:          cfg,
+		monitor:      monitor,
+		customLabels: newCustomLabelSet(cfg.Targets),
+	})
 
 	l := log.New()
 	l.Level = log.ErrorLevel
@@ -317,9 +328,8 @@ func setupResolver(cfg *config.Config) *net.Resolver {
 	if !strings.HasSuffix(cfg.DNS.Nameserver, ":53") {
 		cfg.DNS.Nameserver += ":53"
 	}
-	dialer := func(ctx context.Context, network, address string) (net.Conn, error) {
+	dialer := func(ctx context.Context, _, _ string) (net.Conn, error) {
 		d := net.Dialer{}
-
 		return d.DialContext(ctx, "udp", cfg.DNS.Nameserver)
 	}
 
@@ -330,7 +340,12 @@ func setupResolver(cfg *config.Config) *net.Resolver {
 // config has non-zero values.
 func addFlagToConfig(cfg *config.Config) {
 	if len(cfg.Targets) == 0 {
-		cfg.Targets = *targets
+		cfg.Targets = make([]config.TargetConfig, len(*targets))
+		for i, t := range *targets {
+			cfg.Targets[i] = config.TargetConfig{
+				Addr: t,
+			}
+		}
 	}
 	if cfg.Ping.History == 0 {
 		cfg.Ping.History = *historySize
@@ -352,6 +367,9 @@ func addFlagToConfig(cfg *config.Config) {
 	}
 	if !cfg.Options.DisableIPv6 {
 		cfg.Options.DisableIPv6 = *disableIPv6
+	}
+	if !cfg.Options.DisableIPv4 {
+		cfg.Options.DisableIPv4 = *disableIPv4
 	}
 }
 
