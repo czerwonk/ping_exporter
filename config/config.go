@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 package config
 
 import (
@@ -25,6 +27,7 @@ type Config struct {
 
 	Options struct {
 		DisableIPv6 bool `yaml:"disableIPv6"` // prohibits DNS resolved IPv6 addresses
+		DisableIPv4 bool `yaml:"disableIPv4"` // prohibits DNS resolved IPv4 addresses
 	} `yaml:"options"`
 }
 

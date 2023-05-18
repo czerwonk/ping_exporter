@@ -5,7 +5,9 @@ metadata:
   labels:
     {{- include "ping_exporter.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.replicaCount }} 
+  strategy: 
+  {{- toYaml .Values.strategy | nindent 4 }}
   selector:
     matchLabels:
       {{- include "ping_exporter.selectorLabels" . | nindent 6 }}
@@ -17,6 +19,9 @@ spec:
       {{- end }}
       labels:
         {{- include "ping_exporter.selectorLabels" . | nindent 8 }}
+        {{- if .Values.podLabels }}
+          {{- toYaml .Values.podLabels | nindent 8 }}
+        {{- end }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:

@@ -1,5 +1,4 @@
 # ping_exporter
-[![Docker Build Status](https://img.shields.io/docker/cloud/build/czerwonk/ping_exporter.svg)](https://hub.docker.com/r/czerwonk/ping_exporter/builds)
 [![Go Report Card](https://goreportcard.com/badge/github.com/czerwonk/ping_exporter)](https://goreportcard.com/report/github.com/czerwonk/ping_exporter)
 
 Prometheus exporter for ICMP echo requests using https://github.com/digineo/go-ping
@@ -32,7 +31,7 @@ ping:
   interval: 2s
   timeout: 3s
   history-size: 42
-  payload-size: 120
+  size: 120
 
 options:
   disableIPv6: false
