@@ -15,7 +15,6 @@ import (
 
 	"github.com/digineo/go-ping"
 	mon "github.com/digineo/go-ping/monitor"
-	"tailscale.com/client/tailscale"
 
 	"github.com/czerwonk/ping_exporter/config"
 
@@ -58,21 +57,6 @@ var (
 	rttMetricsScale = rttInMills // might change in future
 	rttMode         = kingpin.Flag("metrics.rttunit", "Export ping results as either seconds (default), or milliseconds (deprecated), or both (for migrations). Valid choices: [s, ms, both]").Default("s").String()
 )
-
-func tsDiscover() {
-	tailscale.I_Acknowledge_This_API_Is_Unstable = true
-
-	client := tailscale.NewClient(*tailnet, tailscale.APIKey(os.Getenv("TS_API_KEY")))
-
-	devices, err := client.Devices(context.Background(), tailscale.DeviceAllFields)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for _, dev := range devices {
-		*targets = append(*targets, dev.Hostname)
-	}
-}
 
 func main() {
 	kingpin.Parse()
