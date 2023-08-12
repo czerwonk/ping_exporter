@@ -128,7 +128,7 @@ To run the ping_exporter in Kubernetes, you can use the supplied helm chart
 
 To install the chart with the release name `ping-exporter`:
 ```console
-$ helm repo add ping-exporter "https://raw.githubusercontent.com/czerwonk/ping_exporter/master/dist/charts/"
+$ helm repo add ping-exporter "https://raw.githubusercontent.com/czerwonk/ping_exporter/main/dist/charts/"
 "ping-exporter" has been added to your repositories
 
 $ helm repo update
@@ -270,4 +270,4 @@ Daniel Czerwonk [dan_nrw](https://twitter.com/dan_nrw)
 [Affinity]: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 [command-line arguments]: https://github.com/czerwonk/ping_exporter#different-time-unit
 [config file]: https://github.com/czerwonk/ping_exporter#config-file
-[values.yaml]: https://github.com/czerwonk/ping_exporter/blob/master/dist/charts/ping-exporter/values.yaml
+[values.yaml]: https://github.com/czerwonk/ping_exporter/blob/main/dist/charts/ping-exporter/values.yaml
