@@ -34,7 +34,7 @@ podSecurityContext: {}
 securityContext:
   capabilities:
     add:
-      - CAP_NET_RAW
+      - NET_RAW
     # drop:
     # - ALL
   # readOnlyRootFilesystem: true
