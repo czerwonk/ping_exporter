@@ -2,13 +2,23 @@ apiVersion: v1
 entries:
   ping-exporter:
   - apiVersion: v2
-    appVersion: 0.4.8
-    created: "2021-12-10T02:34:57.075817897-08:00"
+    appVersion: 1.1.0
+    created: "2024-02-28T11:45:46.282974652Z"
     description: Prometheus exporter for ICMP echo requests
-    digest: da2883ea8479fe47c43211a1c5af7aac0bd608f13b73aa4196557185db1601d2
+    digest: b564d6150c79691c63189498cd7c117b3ece8ac8e33ee607f37354b4cfe128f9
+    name: ping-exporter
+    type: application
+    urls:
+    - ping-exporter-1.1.0.tgz
+    version: 1.1.0
+  - apiVersion: v2
+    appVersion: 0.4.8
+    created: "2024-02-28T11:45:46.282481775Z"
+    description: Prometheus exporter for ICMP echo requests
+    digest: e2dd5d6b44761c50dfbeff7721526778992d8ba0b9314af64c883cb6dab1d058
     name: ping-exporter
     type: application
     urls:
     - ping-exporter-1.0.0.tgz
     version: 1.0.0
-generated: "2021-12-10T02:34:57.071949419-08:00"
+generated: "2024-02-28T11:45:46.281597437Z"
