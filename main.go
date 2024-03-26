@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/digineo/go-ping"
@@ -172,29 +173,38 @@ func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
 func upsertTargets(globalTargets *targets, resolver *net.Resolver, cfg *config.Config, monitor *mon.Monitor) error {
 	oldTargets := globalTargets.Targets()
 	newTargets := make([]*target, len(cfg.Targets))
+	var wg sync.WaitGroup
 	for i, t := range cfg.Targets {
-		t := &target{
-			host:      t.Addr,
-			addresses: make([]net.IPAddr, 0),
-			delay:     time.Duration(10*i) * time.Millisecond,
-			resolver:  resolver,
+		newTarget := globalTargets.Get(t.Addr)
+		if newTarget == nil {
+			newTarget = &target{
+				host:      t.Addr,
+				addresses: make([]net.IPAddr, 0),
+				delay:     time.Duration(10*i) * time.Millisecond,
+				resolver:  resolver,
+			}
 		}
-		newTargets[i] = t
 
-		err := t.addOrUpdateMonitor(monitor, targetOpts{
-			disableIPv4: cfg.Options.DisableIPv4,
-			disableIPv6: cfg.Options.DisableIPv6,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to setup target: %w", err)
-		}
+		newTargets[i] = newTarget
+
+		wg.Add(1)
+		go func() {
+			err := newTarget.addOrUpdateMonitor(monitor, targetOpts{
+				disableIPv4: cfg.Options.DisableIPv4,
+				disableIPv6: cfg.Options.DisableIPv6,
+			})
+			if err != nil {
+				log.Errorf("failed to setup target: %w", err)
+			}
+			wg.Done()
+		}()
 	}
-
+	wg.Wait()
 	globalTargets.SetTargets(newTargets)
 
 	removed := removedTargets(oldTargets, globalTargets)
 	for _, removedTarget := range removed {
-		log.Infof("remove target: %s\n", removedTarget.host)
+		log.Infof("remove target: %s", removedTarget.host)
 		removedTarget.removeFromMonitor(monitor)
 	}
 	return nil
@@ -212,10 +222,22 @@ func watchConfig(globalTargets *targets, resolver *net.Resolver, monitor *mon.Mo
 	}
 	for {
 		select {
-		case <-watcher.Events:
+		case event := <-watcher.Events:
+			log.Debugf("Got file inotify event: %s", event)
+			// If the file is removed, the inotify watcher will lose track of the file. Add it again.
+			if event.Op == inotify.Remove {
+				if err = watcher.Add(*configFile); err != nil {
+					log.Fatalf("failed to renew watch for file: %v", err)
+				}
+			}
 			cfg, err := loadConfig()
 			if err != nil {
 				log.Errorf("unable to load config: %v", err)
+				continue
+			}
+			// We get zero targets if the file was truncated. This happens if an automation tool rewrites
+			// the complete file, instead of alternating only parts of it.
+			if len(cfg.Targets) == 0 {
 				continue
 			}
 			log.Infof("reloading config file %s", *configFile)
