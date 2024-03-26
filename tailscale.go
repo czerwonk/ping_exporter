@@ -19,6 +19,6 @@ func tsDiscover() {
 	}
 
 	for _, dev := range devices {
-		*targets = append(*targets, dev.Hostname)
+		*targetFlag = append(*targetFlag, dev.Hostname)
 	}
 }

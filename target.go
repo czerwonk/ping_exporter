@@ -25,6 +25,35 @@ type target struct {
 	mutex     sync.Mutex
 }
 
+type targets struct {
+	t     []*target
+	mutex sync.RWMutex
+}
+
+func (t *targets) SetTargets(tar []*target) {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+	t.t = tar
+}
+
+func (t *targets) Contains(tar *target) bool {
+	for _, ta := range t.t {
+		if ta.host == tar.host {
+			return true
+		}
+	}
+	return false
+}
+
+func (t *targets) Targets() []*target {
+	t.mutex.RLock()
+	defer t.mutex.RUnlock()
+
+	ret := make([]*target, len(t.t))
+	copy(ret, t.t)
+	return ret
+}
+
 type targetOpts struct {
 	disableIPv4 bool
 	disableIPv6 bool
@@ -34,6 +63,12 @@ const (
 	ipv4 ipVersion = 4
 	ipv6 ipVersion = 6
 )
+
+func (t *target) removeFromMonitor(monitor *mon.Monitor) {
+	for _, addr := range t.addresses {
+		monitor.RemoveTarget(t.nameForIP(addr))
+	}
+}
 
 func (t *target) addOrUpdateMonitor(monitor *mon.Monitor, opts targetOpts) error {
 	t.mutex.Lock()

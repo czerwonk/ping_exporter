@@ -49,6 +49,10 @@ $ # use Cloudflare's public DNS server
 $ ./ping_exporter --dns.nameserver=1.1.1.1:53 [other options]
 ```
 
+The configuration file is watched via inotify. If the configuration is changed,
+ping_exporter will update the targets. To change any global options like the ping
+interval or history size, you must restart the exporter.
+
 ### Exported metrics
 
 - `ping_rtt_best_seconds`:          Best round trip time in seconds
