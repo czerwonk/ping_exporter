@@ -194,7 +194,7 @@ func upsertTargets(globalTargets *targets, resolver *net.Resolver, cfg *config.C
 				disableIPv6: cfg.Options.DisableIPv6,
 			})
 			if err != nil {
-				log.Errorf("failed to setup target: %w", err)
+				log.Errorf("failed to setup target: %v", err)
 			}
 			wg.Done()
 		}()
