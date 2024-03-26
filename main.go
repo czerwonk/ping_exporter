@@ -117,13 +117,18 @@ func main() {
 		kingpin.FatalUsage("No targets specified")
 	}
 
-	m, err := startMonitor(cfg)
+	resolver := setupResolver(cfg)
+
+	m, err := startMonitor(cfg, resolver)
 	if err != nil {
 		log.Errorln(err)
 		os.Exit(2)
 	}
 
-	startServer(cfg, m)
+	collector := NewPingCollector(enableDeprecatedMetrics, rttMetricsScale, m, cfg)
+	go watchConfig(desiredTargets, resolver, m, collector)
+
+	startServer(cfg, collector)
 }
 
 func printVersion() {
@@ -133,8 +138,7 @@ func printVersion() {
 	fmt.Println("Metric exporter for go-icmp")
 }
 
-func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
-	resolver := setupResolver(cfg)
+func startMonitor(cfg *config.Config, resolver *net.Resolver) (*mon.Monitor, error) {
 	var bind4, bind6 string
 	if ln, err := net.Listen("tcp4", "127.0.0.1:0"); err == nil {
 		// ipv4 enabled
@@ -166,7 +170,6 @@ func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
 	}
 
 	go startDNSAutoRefresh(cfg.DNS.Refresh.Duration(), desiredTargets, monitor, cfg)
-	go watchConfig(desiredTargets, resolver, monitor)
 	return monitor, nil
 }
 
@@ -210,7 +213,7 @@ func upsertTargets(globalTargets *targets, resolver *net.Resolver, cfg *config.C
 	return nil
 }
 
-func watchConfig(globalTargets *targets, resolver *net.Resolver, monitor *mon.Monitor) {
+func watchConfig(globalTargets *targets, resolver *net.Resolver, monitor *mon.Monitor, collector *pingCollector) {
 	watcher, err := inotify.NewWatcher()
 	if err != nil {
 		log.Fatalf("unable to create file watcher: %v", err)
@@ -245,6 +248,7 @@ func watchConfig(globalTargets *targets, resolver *net.Resolver, monitor *mon.Mo
 				log.Errorf("failed to reload config: %v", err)
 				continue
 			}
+			collector.UpdateConfig(cfg)
 		case err := <-watcher.Errors:
 			log.Errorf("watching file failed: %v", err)
 		}
@@ -286,7 +290,7 @@ func refreshDNS(tar *targets, monitor *mon.Monitor, cfg *config.Config) {
 	}
 }
 
-func startServer(cfg *config.Config, monitor *mon.Monitor) {
+func startServer(cfg *config.Config, collector *pingCollector) {
 	var err error
 	log.Infof("Starting ping exporter (Version: %s)", version)
 	http.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
@@ -294,11 +298,7 @@ func startServer(cfg *config.Config, monitor *mon.Monitor) {
 	})
 
 	reg := prometheus.NewRegistry()
-	reg.MustRegister(&pingCollector{
-		cfg:          cfg,
-		monitor:      monitor,
-		customLabels: newCustomLabelSet(cfg.Targets),
-	})
+	reg.MustRegister(collector)
 
 	l := log.New()
 	l.Level = log.ErrorLevel
