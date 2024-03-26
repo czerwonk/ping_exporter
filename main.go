@@ -25,7 +25,7 @@ import (
 	inotify "gopkg.in/fsnotify.v1"
 )
 
-const version string = "1.1.0"
+const version string = "1.1.1"
 
 var (
 	showVersion             = kingpin.Flag("version", "Print version information").Default().Bool()
