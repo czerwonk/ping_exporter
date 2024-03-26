@@ -76,7 +76,7 @@ func (t *target) addOrUpdateMonitor(monitor *mon.Monitor, opts targetOpts) error
 
 	addrs, err := t.resolver.LookupIPAddr(context.Background(), t.host)
 	if err != nil {
-		return fmt.Errorf("error resolving target: %w", err)
+		return fmt.Errorf("error resolving target '%s': %w", t.host, err)
 	}
 
 	var sanitizedAddrs []net.IPAddr

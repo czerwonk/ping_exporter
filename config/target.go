@@ -25,3 +25,12 @@ func (d *TargetConfig) UnmarshalYAML(unmashal func(interface{}) error) error {
 
 	return nil
 }
+
+func (d TargetConfig) MarshalYAML() (interface{}, error) {
+	if d.Labels == nil {
+		return d.Addr, nil
+	}
+	ret := make(map[string]map[string]string)
+	ret[d.Addr] = d.Labels
+	return ret, nil
+}

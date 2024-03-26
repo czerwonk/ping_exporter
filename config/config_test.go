@@ -3,6 +3,7 @@
 package config
 
 import (
+	"bytes"
 	"os"
 	"reflect"
 	"testing"
@@ -63,5 +64,37 @@ func TestParseConfig(t *testing.T) {
 	}
 	if expected := true; c.Options.DisableIPv6 != expected {
 		t.Errorf("expected options.disable-ipv6 to be %v, got %v", expected, c.Options.DisableIPv6)
+	}
+}
+
+func TestRoundtrip(t *testing.T) {
+	f, err := os.Open("testdata/config_test.yml")
+	if err != nil {
+		t.Error("failed to open file", err)
+		t.FailNow()
+	}
+
+	c, err := FromYAML(f)
+	if err != nil {
+		t.Error("failed to read file", err)
+		t.FailNow()
+	}
+
+	buf := bytes.NewBuffer(nil)
+	err = ToYAML(buf, c)
+	if err != nil {
+		t.Error("failed to encode config", err)
+		t.FailNow()
+	}
+
+	after, err := FromYAML(buf)
+	if err != nil {
+		t.Error("failed to read config again", err)
+		t.FailNow()
+	}
+
+	if !reflect.DeepEqual(c, after) {
+		t.Error("config after Decode(Encode(cfg)) didn't match")
+		t.FailNow()
 	}
 }
