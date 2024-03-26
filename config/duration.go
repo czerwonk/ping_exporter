@@ -22,6 +22,10 @@ func (d *duration) UnmarshalYAML(unmashal func(interface{}) error) error {
 	return nil
 }
 
+func (d duration) MarshalYAML() (interface{}, error) {
+	return d.Duration().String(), nil
+}
+
 // Duration is a convenience getter.
 func (d duration) Duration() time.Duration {
 	return time.Duration(d)

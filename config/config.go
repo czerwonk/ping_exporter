@@ -42,6 +42,16 @@ func FromYAML(r io.Reader) (*Config, error) {
 	return c, nil
 }
 
+// ToYAML encodes the given configuration to the writer as YAML
+func ToYAML(w io.Writer, cfg *Config) error {
+	err := yaml.NewEncoder(w).Encode(cfg)
+	if err != nil {
+		return fmt.Errorf("failed to encode YAML: %w", err)
+	}
+
+	return nil
+}
+
 func (cfg *Config) TargetConfigByAddr(addr string) TargetConfig {
 	for _, t := range cfg.Targets {
 		if t.Addr == addr {
