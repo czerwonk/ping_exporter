@@ -46,4 +46,5 @@ require (
 	golang.org/x/tools v0.4.1-0.20221208213631-3f74d914ae6d // indirect
 	golang.zx2c4.com/wireguard/windows v0.5.3 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
+	gopkg.in/fsnotify.v1 v1.4.7 // indirect
 )

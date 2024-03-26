@@ -22,6 +22,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
+	inotify "gopkg.in/fsnotify.v1"
 )
 
 const version string = "1.1.0"
@@ -45,7 +46,7 @@ var (
 	disableIPv6             = kingpin.Flag("options.disable-ipv6", "Disable DNS from resolving IPv6 AAAA records").Default().Bool()
 	disableIPv4             = kingpin.Flag("options.disable-ipv4", "Disable DNS from resolving IPv4 A records").Default().Bool()
 	logLevel                = kingpin.Flag("log.level", "Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]").Default("info").String()
-	targets                 = kingpin.Arg("targets", "A list of targets to ping").Strings()
+	targetFlag              = kingpin.Arg("targets", "A list of targets to ping").Strings()
 
 	tailnet = kingpin.Flag("ts.tailnet", "tailnet name").String()
 )
@@ -56,9 +57,11 @@ var (
 
 	rttMetricsScale = rttInMills // might change in future
 	rttMode         = kingpin.Flag("metrics.rttunit", "Export ping results as either seconds (default), or milliseconds (deprecated), or both (for migrations). Valid choices: [s, ms, both]").Default("s").String()
+	desiredTargets  *targets
 )
 
 func main() {
+	desiredTargets = &targets{}
 	kingpin.Parse()
 
 	if len(*tailnet) > 0 {
@@ -156,7 +159,19 @@ func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
 		cfg.Ping.Timeout.Duration())
 	monitor.HistorySize = cfg.Ping.History
 
-	targets := make([]*target, len(cfg.Targets))
+	err = upsertTargets(desiredTargets, resolver, cfg, monitor)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	go startDNSAutoRefresh(cfg.DNS.Refresh.Duration(), desiredTargets, monitor, cfg)
+	go watchConfig(desiredTargets, resolver, monitor)
+	return monitor, nil
+}
+
+func upsertTargets(globalTargets *targets, resolver *net.Resolver, cfg *config.Config, monitor *mon.Monitor) error {
+	oldTargets := globalTargets.Targets()
+	newTargets := make([]*target, len(cfg.Targets))
 	for i, t := range cfg.Targets {
 		t := &target{
 			host:      t.Addr,
@@ -164,35 +179,79 @@ func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
 			delay:     time.Duration(10*i) * time.Millisecond,
 			resolver:  resolver,
 		}
-		targets[i] = t
+		newTargets[i] = t
 
 		err := t.addOrUpdateMonitor(monitor, targetOpts{
 			disableIPv4: cfg.Options.DisableIPv4,
 			disableIPv6: cfg.Options.DisableIPv6,
 		})
 		if err != nil {
-			log.Errorln(err)
+			return fmt.Errorf("failed to setup target: %w", err)
 		}
 	}
 
-	go startDNSAutoRefresh(cfg.DNS.Refresh.Duration(), targets, monitor, cfg)
+	globalTargets.SetTargets(newTargets)
 
-	return monitor, nil
+	removed := removedTargets(oldTargets, globalTargets)
+	for _, removedTarget := range removed {
+		log.Infof("remove target: %s\n", removedTarget.host)
+		removedTarget.removeFromMonitor(monitor)
+	}
+	return nil
 }
 
-func startDNSAutoRefresh(interval time.Duration, targets []*target, monitor *mon.Monitor, cfg *config.Config) {
+func watchConfig(globalTargets *targets, resolver *net.Resolver, monitor *mon.Monitor) {
+	watcher, err := inotify.NewWatcher()
+	if err != nil {
+		log.Fatalf("unable to create file watcher: %v", err)
+	}
+
+	err = watcher.Add(*configFile)
+	if err != nil {
+		log.Fatalf("unable to watch file: %v", err)
+	}
+	for {
+		select {
+		case <-watcher.Events:
+			cfg, err := loadConfig()
+			if err != nil {
+				log.Errorf("unable to load config: %v", err)
+				continue
+			}
+			log.Infof("reloading config file %s", *configFile)
+			if err := upsertTargets(globalTargets, resolver, cfg, monitor); err != nil {
+				log.Errorf("failed to reload config: %v", err)
+				continue
+			}
+		case err := <-watcher.Errors:
+			log.Errorf("watching file failed: %v", err)
+		}
+	}
+}
+
+func removedTargets(old []*target, new *targets) []*target {
+	var ret []*target
+	for _, oldTarget := range old {
+		if !new.Contains(oldTarget) {
+			ret = append(ret, oldTarget)
+		}
+	}
+	return ret
+}
+
+func startDNSAutoRefresh(interval time.Duration, tar *targets, monitor *mon.Monitor, cfg *config.Config) {
 	if interval <= 0 {
 		return
 	}
 
 	for range time.NewTicker(interval).C {
-		refreshDNS(targets, monitor, cfg)
+		refreshDNS(tar, monitor, cfg)
 	}
 }
 
-func refreshDNS(targets []*target, monitor *mon.Monitor, cfg *config.Config) {
+func refreshDNS(tar *targets, monitor *mon.Monitor, cfg *config.Config) {
 	log.Infoln("refreshing DNS")
-	for _, t := range targets {
+	for _, t := range tar.Targets() {
 		go func(ta *target) {
 			err := ta.addOrUpdateMonitor(monitor, targetOpts{
 				disableIPv4: cfg.Options.DisableIPv4,
@@ -324,8 +383,8 @@ func setupResolver(cfg *config.Config) *net.Resolver {
 // config has non-zero values.
 func addFlagToConfig(cfg *config.Config) {
 	if len(cfg.Targets) == 0 {
-		cfg.Targets = make([]config.TargetConfig, len(*targets))
-		for i, t := range *targets {
+		cfg.Targets = make([]config.TargetConfig, len(*targetFlag))
+		for i, t := range *targetFlag {
 			cfg.Targets[i] = config.TargetConfig{
 				Addr: t,
 			}
