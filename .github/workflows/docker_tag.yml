@@ -10,7 +10,7 @@ jobs:
 
     steps:
       - name: Check Out Repo 
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Login to Docker Hub
         uses: docker/login-action@v1
@@ -42,7 +42,6 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/${{ steps.extract_repo_name.outputs.repo }}:v${{ steps.extract_tag_name.outputs.tag }}
-          platforms: linux/amd64,linux/arm64,linux/arm/v6,linux/arm/v7
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
