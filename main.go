@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/digineo/go-ping"
@@ -116,13 +117,18 @@ func main() {
 		kingpin.FatalUsage("No targets specified")
 	}
 
-	m, err := startMonitor(cfg)
+	resolver := setupResolver(cfg)
+
+	m, err := startMonitor(cfg, resolver)
 	if err != nil {
 		log.Errorln(err)
 		os.Exit(2)
 	}
 
-	startServer(cfg, m)
+	collector := NewPingCollector(enableDeprecatedMetrics, rttMetricsScale, m, cfg)
+	go watchConfig(desiredTargets, resolver, m, collector)
+
+	startServer(cfg, collector)
 }
 
 func printVersion() {
@@ -132,8 +138,7 @@ func printVersion() {
 	fmt.Println("Metric exporter for go-icmp")
 }
 
-func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
-	resolver := setupResolver(cfg)
+func startMonitor(cfg *config.Config, resolver *net.Resolver) (*mon.Monitor, error) {
 	var bind4, bind6 string
 	if ln, err := net.Listen("tcp4", "127.0.0.1:0"); err == nil {
 		// ipv4 enabled
@@ -165,42 +170,50 @@ func startMonitor(cfg *config.Config) (*mon.Monitor, error) {
 	}
 
 	go startDNSAutoRefresh(cfg.DNS.Refresh.Duration(), desiredTargets, monitor, cfg)
-	go watchConfig(desiredTargets, resolver, monitor)
 	return monitor, nil
 }
 
 func upsertTargets(globalTargets *targets, resolver *net.Resolver, cfg *config.Config, monitor *mon.Monitor) error {
 	oldTargets := globalTargets.Targets()
 	newTargets := make([]*target, len(cfg.Targets))
+	var wg sync.WaitGroup
 	for i, t := range cfg.Targets {
-		t := &target{
-			host:      t.Addr,
-			addresses: make([]net.IPAddr, 0),
-			delay:     time.Duration(10*i) * time.Millisecond,
-			resolver:  resolver,
+		newTarget := globalTargets.Get(t.Addr)
+		if newTarget == nil {
+			newTarget = &target{
+				host:      t.Addr,
+				addresses: make([]net.IPAddr, 0),
+				delay:     time.Duration(10*i) * time.Millisecond,
+				resolver:  resolver,
+			}
 		}
-		newTargets[i] = t
 
-		err := t.addOrUpdateMonitor(monitor, targetOpts{
-			disableIPv4: cfg.Options.DisableIPv4,
-			disableIPv6: cfg.Options.DisableIPv6,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to setup target: %w", err)
-		}
+		newTargets[i] = newTarget
+
+		wg.Add(1)
+		go func() {
+			err := newTarget.addOrUpdateMonitor(monitor, targetOpts{
+				disableIPv4: cfg.Options.DisableIPv4,
+				disableIPv6: cfg.Options.DisableIPv6,
+			})
+			if err != nil {
+				log.Errorf("failed to setup target: %v", err)
+			}
+			wg.Done()
+		}()
 	}
-
+	wg.Wait()
 	globalTargets.SetTargets(newTargets)
 
 	removed := removedTargets(oldTargets, globalTargets)
 	for _, removedTarget := range removed {
-		log.Infof("remove target: %s\n", removedTarget.host)
+		log.Infof("remove target: %s", removedTarget.host)
 		removedTarget.removeFromMonitor(monitor)
 	}
 	return nil
 }
 
-func watchConfig(globalTargets *targets, resolver *net.Resolver, monitor *mon.Monitor) {
+func watchConfig(globalTargets *targets, resolver *net.Resolver, monitor *mon.Monitor, collector *pingCollector) {
 	watcher, err := inotify.NewWatcher()
 	if err != nil {
 		log.Fatalf("unable to create file watcher: %v", err)
@@ -212,10 +225,22 @@ func watchConfig(globalTargets *targets, resolver *net.Resolver, monitor *mon.Mo
 	}
 	for {
 		select {
-		case <-watcher.Events:
+		case event := <-watcher.Events:
+			log.Debugf("Got file inotify event: %s", event)
+			// If the file is removed, the inotify watcher will lose track of the file. Add it again.
+			if event.Op == inotify.Remove {
+				if err = watcher.Add(*configFile); err != nil {
+					log.Fatalf("failed to renew watch for file: %v", err)
+				}
+			}
 			cfg, err := loadConfig()
 			if err != nil {
 				log.Errorf("unable to load config: %v", err)
+				continue
+			}
+			// We get zero targets if the file was truncated. This happens if an automation tool rewrites
+			// the complete file, instead of alternating only parts of it.
+			if len(cfg.Targets) == 0 {
 				continue
 			}
 			log.Infof("reloading config file %s", *configFile)
@@ -223,6 +248,7 @@ func watchConfig(globalTargets *targets, resolver *net.Resolver, monitor *mon.Mo
 				log.Errorf("failed to reload config: %v", err)
 				continue
 			}
+			collector.UpdateConfig(cfg)
 		case err := <-watcher.Errors:
 			log.Errorf("watching file failed: %v", err)
 		}
@@ -264,7 +290,7 @@ func refreshDNS(tar *targets, monitor *mon.Monitor, cfg *config.Config) {
 	}
 }
 
-func startServer(cfg *config.Config, monitor *mon.Monitor) {
+func startServer(cfg *config.Config, collector *pingCollector) {
 	var err error
 	log.Infof("Starting ping exporter (Version: %s)", version)
 	http.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
@@ -272,11 +298,7 @@ func startServer(cfg *config.Config, monitor *mon.Monitor) {
 	})
 
 	reg := prometheus.NewRegistry()
-	reg.MustRegister(&pingCollector{
-		cfg:          cfg,
-		monitor:      monitor,
-		customLabels: newCustomLabelSet(cfg.Targets),
-	})
+	reg.MustRegister(collector)
 
 	l := log.New()
 	l.Level = log.ErrorLevel

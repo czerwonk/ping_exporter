@@ -37,12 +37,25 @@ func (t *targets) SetTargets(tar []*target) {
 }
 
 func (t *targets) Contains(tar *target) bool {
+	t.mutex.RLock()
+	defer t.mutex.RUnlock()
 	for _, ta := range t.t {
 		if ta.host == tar.host {
 			return true
 		}
 	}
 	return false
+}
+
+func (t *targets) Get(host string) *target {
+	t.mutex.RLock()
+	defer t.mutex.RUnlock()
+	for _, ta := range t.t {
+		if ta.host == host {
+			return ta
+		}
+	}
+	return nil
 }
 
 func (t *targets) Targets() []*target {
