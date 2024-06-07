@@ -49,6 +49,8 @@ func (p *pingCollector) UpdateConfig(cfg *config.Config) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	p.cfg.Targets = cfg.Targets
+	p.customLabels = newCustomLabelSet(cfg.Targets)
+	p.createDesc()
 }
 
 func (p *pingCollector) Describe(ch chan<- *prometheus.Desc) {
