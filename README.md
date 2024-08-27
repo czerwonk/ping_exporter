@@ -32,7 +32,7 @@ ping:
   interval: 2s
   timeout: 3s
   history-size: 42
-  size: 120
+  payload-size: 120
 
 options:
   disableIPv6: false
