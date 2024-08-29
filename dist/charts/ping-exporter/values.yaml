@@ -105,3 +105,7 @@ config:
 # Create a serviceMonitor resource to be consumed by Prometheus Operator
 serviceMonitor:
   enabled: false
+
+# Create basic Prometheus alerting rules
+prometheusRules:
+  enabled: false

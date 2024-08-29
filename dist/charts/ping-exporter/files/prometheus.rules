@@ -1,0 +1,16 @@
+    - alert: HighPingLossRatio
+      expr: round(ping_loss_ratio * 100) > 0
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: High ping loss ratio for {{ $labels.target }}
+        description: "Ping loss ratio for {{ $labels.target }} is {{ $value }}"
+    - alert: HighPingRtt
+      expr: round(ping_rtt_mean_seconds * 1000, 0.1) > 100
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: High ping latency for {{ $labels.target }}
+        description: "Ping latency for {{ $labels.target }} is {{ $value }} seconds"

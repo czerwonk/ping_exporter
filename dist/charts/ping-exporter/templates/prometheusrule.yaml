@@ -1,0 +1,14 @@
+{{- if .Values.prometheusRules.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    prometheus: service-prometheus
+    role: alert-rules
+  name: {{ include "ping_exporter.fullname" . }}
+spec:
+  groups:
+  - name: ping_exporter.rules
+    rules:
+{{ .Files.Get "files/prometheus.rules" }}
+{{- end }}
