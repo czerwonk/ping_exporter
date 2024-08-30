@@ -1,0 +1,28 @@
+{{- if .Values.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "ping_exporter.fullname" . }}
+  labels:
+    {{- include "ping_exporter.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "ping_exporter.selectorLabels" . | nindent 6 }}
+  endpoints:
+  - port: http
+    interval: 60s
+    relabelings:
+      - action: labeldrop
+        regex: pod
+        sourceLabels: []
+      - action: labeldrop
+        regex: namespace
+        sourceLabels: []
+      - action: labeldrop
+        regex: instance
+        sourceLabels: []
+      - action: labeldrop
+        regex: job
+        sourceLabels: []
+{{- end }}

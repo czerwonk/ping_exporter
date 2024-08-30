@@ -101,3 +101,11 @@ config:
     timeout: 3s
     history-size: 42
     payload-size: 120
+
+# Create a serviceMonitor resource to be consumed by Prometheus Operator
+serviceMonitor:
+  enabled: false
+
+# Create basic Prometheus alerting rules
+prometheusRules:
+  enabled: false
