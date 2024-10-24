@@ -1,0 +1,34 @@
+apiVersion: skaffold/v4beta7
+kind: Config
+metadata:
+  name: ping_exporter
+build:
+  artifacts:
+    - image: localhost/ping_exporter
+      context: ../
+      docker:
+        dockerfile: ../Dockerfile
+deploy:
+  helm:
+    releases:
+      - name: ping-exporter
+        chartPath: ../dist/charts/ping-exporter
+        createNamespace: true
+        setValueTemplates:
+          image.repository: "{{.IMAGE_DOMAIN_localhost_ping_exporter}}/{{.IMAGE_REPO_NO_DOMAIN_localhost_ping_exporter}}"
+          image.tag: "{{.IMAGE_TAG_localhost_ping_exporter}}"
+        setValues:
+          image:
+            pullPolicy: Never
+          serviceMonitor:
+            enabled: true
+            additionalRelabeling: {}
+          securityContext:
+            capabilities:
+              add:
+                - NET_RAW
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000

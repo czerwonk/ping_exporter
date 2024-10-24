@@ -178,6 +178,14 @@ NAME: ping-exporter
 | tolerations | list | `[]` | [Tolerations] | 
 
 
+### Kubernetes Dev Loop
+
+`./dev` contains a `Makefile` and targets to start a devloop from sractch with kind.
+
+running `make dev` from inside `./dev` will bring up a kind cluster and start a skaffold dev loop against it
+
+if you're trying to dev against the `serviceMonitor`, you will need to install the `prometheus-community/prometheus-operator-crds` chart at a minimum to get that template to render.
+
 ## Changes from previous versions
 
 ### `ping_loss_ratio` vs `ping_loss_percent`
