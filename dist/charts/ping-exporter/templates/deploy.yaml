@@ -1,13 +1,15 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: {{ .Values.type}}
 metadata:
   name: {{ include "ping_exporter.fullname" . }}
   labels:
     {{- include "ping_exporter.labels" . | nindent 4 }}
 spec:
+  {{- if eq .Values.type "Deployment" }}
   replicas: {{ .Values.replicaCount }} 
   strategy: 
   {{- toYaml .Values.strategy | nindent 4 }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "ping_exporter.selectorLabels" . | nindent 6 }}

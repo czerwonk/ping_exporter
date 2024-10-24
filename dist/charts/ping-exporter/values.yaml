@@ -1,5 +1,7 @@
 replicaCount: 1
 
+type: DaemonSet
+
 image:
   repository: czerwonk/ping_exporter
   pullPolicy: IfNotPresent
