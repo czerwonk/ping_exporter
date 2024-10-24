@@ -105,6 +105,20 @@ config:
 # Create a serviceMonitor resource to be consumed by Prometheus Operator
 serviceMonitor:
   enabled: false
+  additionalRelabeling:
+  - action: labeldrop
+    regex: pod
+    sourceLabels: []
+  - action: labeldrop
+    regex: namespace
+    sourceLabels: []
+  - action: labeldrop
+    regex: instance
+    sourceLabels: []
+  - action: labeldrop
+    regex: job
+    sourceLabels: []
+
 
 # Create basic Prometheus alerting rules
 prometheusRules:
