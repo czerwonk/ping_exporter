@@ -176,6 +176,7 @@ NAME: ping-exporter
 | serviceAccount.annotations | object | `{}` | Annotations applied to created service account |
 | serviceAccount.name | string | `""` | Overrides the application's service account name which defaults to `"ping-exporter.fullname"` |
 | tolerations | list | `[]` | [Tolerations] | 
+| testConnection.enabled | bool | `true` | Enable the test connection pod for the ping_exporter
 
 
 ## Changes from previous versions
