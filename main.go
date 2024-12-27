@@ -19,10 +19,10 @@ import (
 
 	"github.com/czerwonk/ping_exporter/config"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/alecthomas/kingpin.v2"
 	inotify "gopkg.in/fsnotify.v1"
 )
 
