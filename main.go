@@ -32,6 +32,7 @@ var (
 	showVersion             = kingpin.Flag("version", "Print version information").Default().Bool()
 	listenAddress           = kingpin.Flag("web.listen-address", "Address on which to expose metrics and web interface").Default(":9427").String()
 	metricsPath             = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics").Default("/metrics").String()
+	metricsToken            = kingpin.Flag("web.token", "Token (in http request headers of queries) which to expose metrics").Default("").String()
 	serverUseTLS            = kingpin.Flag("web.tls.enabled", "Enable TLS for web server, default is false").Default().Bool()
 	serverTlsCertFile       = kingpin.Flag("web.tls.cert-file", "The certificate file for the web server").Default("").String()
 	serverTlsKeyFile        = kingpin.Flag("web.tls.key-file", "The key file for the web server").Default("").String()
@@ -293,7 +294,17 @@ func refreshDNS(tar *targets, monitor *mon.Monitor, cfg *config.Config) {
 func startServer(cfg *config.Config, collector *pingCollector) {
 	var err error
 	log.Infof("Starting ping exporter (Version: %s)", version)
-	http.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if *metricsToken != "" {
+			token := r.URL.Query().Get("token")
+			if token == "" {
+				token = r.Header.Get("token")
+			}
+			if token != *metricsToken {
+				w.Write([]byte("wrong token"))
+				return
+			}
+		}
 		fmt.Fprintf(w, indexHTML, *metricsPath)
 	})
 
@@ -307,7 +318,19 @@ func startServer(cfg *config.Config, collector *pingCollector) {
 		ErrorLog:      l,
 		ErrorHandling: promhttp.ContinueOnError,
 	})
-	http.Handle(*metricsPath, h)
+	http.HandleFunc(*metricsPath, func(w http.ResponseWriter, r *http.Request) {
+		if *metricsToken != "" {
+			token := r.URL.Query().Get("token")
+			if token == "" {
+				token = r.Header.Get("token")
+			}
+			if token != *metricsToken {
+				w.Write([]byte("wrong token"))
+				return
+			}
+		}
+		h.ServeHTTP(w, r)
+	})
 
 	server := http.Server{
 		Addr: *listenAddress,
