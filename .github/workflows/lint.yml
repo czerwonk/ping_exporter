@@ -20,15 +20,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Cache Go modules
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/go/pkg/mod              # Module download cache
-            ~/.cache/go-build         # Build cache (Linux)
-          key:          ${{ runner.os }}-${{ env.GO_VERSION }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-${{ env.GO_VERSION }}-go-
-
       - name: Check and get dependencies
         run: |
           go mod tidy
