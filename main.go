@@ -129,7 +129,7 @@ func main() {
 	collector := NewPingCollector(enableDeprecatedMetrics, rttMetricsScale, m, cfg)
 	go watchConfig(desiredTargets, resolver, m, collector)
 
-	startServer(cfg, collector)
+	startServer(collector)
 }
 
 func printVersion() {
@@ -291,20 +291,14 @@ func refreshDNS(tar *targets, monitor *mon.Monitor, cfg *config.Config) {
 	}
 }
 
-func startServer(cfg *config.Config, collector *pingCollector) {
+func startServer(collector *pingCollector) {
 	var err error
 	log.Infof("Starting ping exporter (Version: %s)", version)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if *metricsToken != "" {
-			token := r.URL.Query().Get("token")
-			if token == "" {
-				token = r.Header.Get("token")
-			}
-			if token != *metricsToken {
-				w.Write([]byte("wrong token"))
-				return
-			}
+		if !hasValidToken(r, w) {
+			return
 		}
+
 		fmt.Fprintf(w, indexHTML, *metricsPath)
 	})
 
@@ -319,16 +313,10 @@ func startServer(cfg *config.Config, collector *pingCollector) {
 		ErrorHandling: promhttp.ContinueOnError,
 	})
 	http.HandleFunc(*metricsPath, func(w http.ResponseWriter, r *http.Request) {
-		if *metricsToken != "" {
-			token := r.URL.Query().Get("token")
-			if token == "" {
-				token = r.Header.Get("token")
-			}
-			if token != *metricsToken {
-				w.Write([]byte("wrong token"))
-				return
-			}
+		if !hasValidToken(r, w) {
+			return
 		}
+
 		h.ServeHTTP(w, r)
 	})
 
@@ -348,6 +336,25 @@ func startServer(cfg *config.Config, collector *pingCollector) {
 	if err != nil && err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
+}
+
+func hasValidToken(r *http.Request, w http.ResponseWriter) bool {
+	if *metricsToken == "" {
+		return true
+	}
+
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		token = r.Header.Get("token")
+	}
+
+	if token != *metricsToken {
+		w.WriteHeader(http.StatusForbidden)
+		fmt.Fprint(w, "wrong token")
+		return false
+	}
+
+	return true
 }
 
 func confureTLS(server *http.Server) {
