@@ -27,7 +27,7 @@ podLabels: {}
 # Rollout strategy, could be "Recreate" or "RollingUpdate"
 strategy:
   type: RollingUpdate
-
+  
 podSecurityContext: {}
   # fsGroup: 2000
 
@@ -91,6 +91,8 @@ config:
     - 2001:4860:4860::8888
     - 2001:4860:4860::8844
     - google.com
+    - host: www.facebook.com
+      mylabel: testlabel
 
   dns:
     refresh: 2m15s
@@ -110,5 +112,6 @@ serviceMonitor:
 prometheusRules:
   enabled: false
 
-testConnection:
-  enabled: true
+# add rbac to look up targets by service name
+k8sresolver:
+  create: false
