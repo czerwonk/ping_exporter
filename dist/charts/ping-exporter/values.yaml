@@ -1,20 +1,15 @@
 replicaCount: 1
 
-type: DaemonSet
-
 image:
   repository: czerwonk/ping_exporter
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "v1.1.0"
+  tag: ""
 
 imagePullSecrets: []
   # - name: my-image-pull-secret
 nameOverride: ""
 fullnameOverride: ""
-
-networkPolicy:
-  create: false
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -33,9 +28,6 @@ podLabels: {}
 strategy:
   type: RollingUpdate
   
-psp:
-  create: false
-
 podSecurityContext: {}
   # fsGroup: 2000
 
@@ -112,24 +104,9 @@ config:
     history-size: 42
     payload-size: 120
 
-# Create either a PodMonitor or ServiceMonitor resource to be consumed by Prometheus Operator
-monitoring:
+# Create a serviceMonitor resource to be consumed by Prometheus Operator
+serviceMonitor:
   enabled: false
-  type: PodMonitor
-  relabelings:
-  - action: labeldrop
-    regex: pod
-    sourceLabels: []
-  - action: labeldrop
-    regex: namespace
-    sourceLabels: []
-  - action: labeldrop
-    regex: instance
-    sourceLabels: []
-  - action: labeldrop
-    regex: job
-    sourceLabels: []
-
 
 # Create basic Prometheus alerting rules
 prometheusRules:
