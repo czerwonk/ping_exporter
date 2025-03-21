@@ -31,11 +31,18 @@ func (t *TargetConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
-func (d TargetConfig) MarshalYAML() (interface{}, error) {
-	if d.Labels == nil {
-		return d.Addr, nil
+func (t TargetConfig) MarshalYAML() (interface{}, error) {
+	// If there are no labels, just return the address as a string
+	if len(t.Labels) == 0 {
+		return t.Addr, nil
 	}
-	ret := make(map[string]map[string]string)
-	ret[d.Addr] = d.Labels
-	return ret, nil
+
+	// Otherwise, construct a map with "host" as Addr and other labels
+	m := make(map[string]string)
+	m["host"] = t.Addr
+	for k, v := range t.Labels {
+		m[k] = v
+	}
+
+	return m, nil
 }
