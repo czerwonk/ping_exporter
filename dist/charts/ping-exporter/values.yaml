@@ -1,15 +1,20 @@
 replicaCount: 1
 
+type: DaemonSet
+
 image:
   repository: czerwonk/ping_exporter
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: ""
+  tag: "v1.1.0"
 
 imagePullSecrets: []
   # - name: my-image-pull-secret
 nameOverride: ""
 fullnameOverride: ""
+
+networkPolicy:
+  create: false
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -27,6 +32,9 @@ podLabels: {}
 # Rollout strategy, could be "Recreate" or "RollingUpdate"
 strategy:
   type: RollingUpdate
+  
+psp:
+  create: false
 
 podSecurityContext: {}
   # fsGroup: 2000
@@ -91,6 +99,8 @@ config:
     - 2001:4860:4860::8888
     - 2001:4860:4860::8844
     - google.com
+    - host: www.facebook.com
+      mylabel: testlabel
 
   dns:
     refresh: 2m15s
@@ -102,13 +112,29 @@ config:
     history-size: 42
     payload-size: 120
 
-# Create a serviceMonitor resource to be consumed by Prometheus Operator
-serviceMonitor:
+# Create either a PodMonitor or ServiceMonitor resource to be consumed by Prometheus Operator
+monitoring:
   enabled: false
+  type: PodMonitor
+  relabelings:
+  - action: labeldrop
+    regex: pod
+    sourceLabels: []
+  - action: labeldrop
+    regex: namespace
+    sourceLabels: []
+  - action: labeldrop
+    regex: instance
+    sourceLabels: []
+  - action: labeldrop
+    regex: job
+    sourceLabels: []
+
 
 # Create basic Prometheus alerting rules
 prometheusRules:
   enabled: false
 
-testConnection:
-  enabled: true
+# add rbac to look up targets by service name
+k8sresolver:
+  create: false
