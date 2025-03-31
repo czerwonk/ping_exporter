@@ -9,6 +9,7 @@ targets:
 dns:
   refresh: 2m15s
   nameserver: 1.1.1.1
+  timeout: 5s
 
 ping:
   interval: 2s
