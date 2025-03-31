@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/czerwonk/ping_exporter/config"
 	mon "github.com/digineo/go-ping/monitor"
 	log "github.com/sirupsen/logrus"
 )
@@ -83,11 +84,18 @@ func (t *target) removeFromMonitor(monitor *mon.Monitor) {
 	}
 }
 
-func (t *target) addOrUpdateMonitor(monitor *mon.Monitor, opts targetOpts) error {
+func (t *target) addOrUpdateMonitor(monitor *mon.Monitor, opts targetOpts, cfg *config.Config) error {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
-	addrs, err := t.resolver.LookupIPAddr(context.Background(), t.host)
+	ctx := context.Background()
+	if cfg.DNS.Timeout.Duration() != time.Duration(0*time.Second) {
+		log.Infof("DNS timeout enabled: using %+v", cfg.DNS.Timeout)
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(context.Background(), cfg.DNS.Timeout.Duration())
+		defer cancel()
+	}
+	addrs, err := t.resolver.LookupIPAddr(ctx, t.host)
 	if err != nil {
 		return fmt.Errorf("error resolving target '%s': %w", t.host, err)
 	}
