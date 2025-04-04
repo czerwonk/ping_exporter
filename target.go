@@ -22,7 +22,7 @@ type target struct {
 	host      string
 	addresses []net.IPAddr
 	delay     time.Duration
-	resolver  *net.Resolver
+	resolver  Resolver
 	mutex     sync.Mutex
 }
 
