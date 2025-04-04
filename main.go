@@ -45,6 +45,7 @@ var (
 	historySize             = kingpin.Flag("ping.history-size", "Number of results to remember per target").Default("10").Int()
 	dnsRefresh              = kingpin.Flag("dns.refresh", "Interval for refreshing DNS records and updating targets accordingly (0 if disabled)").Default("1m").Duration()
 	dnsNameServer           = kingpin.Flag("dns.nameserver", "DNS server used to resolve hostname of targets").Default("").String()
+	dnsLookupTimeout        = kingpin.Flag("dns.timeout", "Timeout for DNS resolution").Default("0s").Duration()
 	disableIPv6             = kingpin.Flag("options.disable-ipv6", "Disable DNS from resolving IPv6 AAAA records").Default().Bool()
 	disableIPv4             = kingpin.Flag("options.disable-ipv4", "Disable DNS from resolving IPv4 A records").Default().Bool()
 	logLevel                = kingpin.Flag("log.level", "Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]").Default("info").String()
@@ -196,7 +197,7 @@ func upsertTargets(globalTargets *targets, resolver *net.Resolver, cfg *config.C
 			err := newTarget.addOrUpdateMonitor(monitor, targetOpts{
 				disableIPv4: cfg.Options.DisableIPv4,
 				disableIPv6: cfg.Options.DisableIPv6,
-			})
+			}, cfg)
 			if err != nil {
 				log.Errorf("failed to setup target: %v", err)
 			}
@@ -283,7 +284,7 @@ func refreshDNS(tar *targets, monitor *mon.Monitor, cfg *config.Config) {
 			err := ta.addOrUpdateMonitor(monitor, targetOpts{
 				disableIPv4: cfg.Options.DisableIPv4,
 				disableIPv6: cfg.Options.DisableIPv6,
-			})
+			}, cfg)
 			if err != nil {
 				log.Errorf("could not refresh dns: %v", err)
 			}
@@ -465,6 +466,9 @@ func addFlagToConfig(cfg *config.Config) {
 	}
 	if !cfg.Options.DisableIPv4 {
 		cfg.Options.DisableIPv4 = *disableIPv4
+	}
+	if cfg.DNS.Timeout == 0 {
+		cfg.DNS.Timeout.Set(*dnsLookupTimeout)
 	}
 }
 
