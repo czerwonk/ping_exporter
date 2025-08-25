@@ -51,8 +51,6 @@ var (
 	disableIPv4             = kingpin.Flag("options.disable-ipv4", "Disable DNS from resolving IPv4 A records").Default().Bool()
 	logLevel                = kingpin.Flag("log.level", "Only log messages with the given severity or above. Valid levels: [debug, info, warn, error, fatal]").Default("info").String()
 	targetFlag              = kingpin.Arg("targets", "A list of targets to ping").Strings()
-
-	tailnet = kingpin.Flag("ts.tailnet", "tailnet name").String()
 )
 
 var (
@@ -67,10 +65,6 @@ var (
 func main() {
 	desiredTargets = &targets{}
 	kingpin.Parse()
-
-	if len(*tailnet) > 0 {
-		tsDiscover()
-	}
 
 	if *showVersion {
 		printVersion()
