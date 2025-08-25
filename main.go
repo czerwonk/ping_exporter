@@ -114,16 +114,16 @@ func main() {
 		kingpin.FatalUsage("No targets specified")
 	}
 
-	resolver := setupResolver(cfg)
+	globalResolver := setupGlobalResolver(cfg)
 
-	m, err := startMonitor(cfg, resolver)
+	m, err := startMonitor(cfg, globalResolver)
 	if err != nil {
 		log.Errorln(err)
 		os.Exit(2)
 	}
 
 	collector := NewPingCollector(enableDeprecatedMetrics, rttMetricsScale, m, cfg)
-	go watchConfig(desiredTargets, resolver, m, collector)
+	go watchConfig(desiredTargets, globalResolver, m, collector)
 
 	startServer(collector)
 }
@@ -135,7 +135,7 @@ func printVersion() {
 	fmt.Println("Metric exporter for go-icmp")
 }
 
-func startMonitor(cfg *config.Config, resolver *net.Resolver) (*mon.Monitor, error) {
+func startMonitor(cfg *config.Config, globalResolver Resolver) (*mon.Monitor, error) {
 	var bind4, bind6 string
 	if ln, err := net.Listen("tcp4", "127.0.0.1:0"); err == nil {
 		// ipv4 enabled
@@ -168,7 +168,7 @@ func startMonitor(cfg *config.Config, resolver *net.Resolver) (*mon.Monitor, err
 		cfg.Ping.Timeout.Duration())
 	monitor.HistorySize = cfg.Ping.History
 
-	err = upsertTargets(desiredTargets, resolver, cfg, monitor)
+	err = upsertTargets(desiredTargets, globalResolver, cfg, monitor)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -177,13 +177,23 @@ func startMonitor(cfg *config.Config, resolver *net.Resolver) (*mon.Monitor, err
 	return monitor, nil
 }
 
-func upsertTargets(globalTargets *targets, resolver *net.Resolver, cfg *config.Config, monitor *mon.Monitor) error {
+func upsertTargets(globalTargets *targets, globalResolver Resolver, cfg *config.Config, monitor *mon.Monitor) error {
 	oldTargets := globalTargets.Targets()
 	newTargets := make([]*target, len(cfg.Targets))
 	var wg sync.WaitGroup
+	var err error
 	for i, t := range cfg.Targets {
 		newTarget := globalTargets.Get(t.Addr)
 		if newTarget == nil {
+			resolver := globalResolver
+			// check if there's a 'resolver' label in the target config
+			// and if its set to 'k8s', then use the k8s resolver
+			if r, ok := t.Labels["resolver"]; ok && r == "k8s" {
+				resolver, err = NewK8sResolver()
+				if err != nil {
+					return fmt.Errorf("failed to create k8s resolver: %w", err)
+				}
+			}
 			newTarget = &target{
 				host:      t.Addr,
 				addresses: make([]net.IPAddr, 0),
@@ -217,7 +227,7 @@ func upsertTargets(globalTargets *targets, resolver *net.Resolver, cfg *config.C
 	return nil
 }
 
-func watchConfig(globalTargets *targets, resolver *net.Resolver, monitor *mon.Monitor, collector *pingCollector) {
+func watchConfig(globalTargets *targets, globalResolver Resolver, monitor *mon.Monitor, collector *pingCollector) {
 	watcher, err := inotify.NewWatcher()
 	if err != nil {
 		log.Fatalf("unable to create file watcher: %v", err)
@@ -248,7 +258,7 @@ func watchConfig(globalTargets *targets, resolver *net.Resolver, monitor *mon.Mo
 				continue
 			}
 			log.Infof("reloading config file %s", *configFile)
-			if err := upsertTargets(globalTargets, resolver, cfg, monitor); err != nil {
+			if err := upsertTargets(globalTargets, globalResolver, cfg, monitor); err != nil {
 				log.Errorf("failed to reload config: %v", err)
 				continue
 			}
@@ -418,9 +428,10 @@ func loadConfig() (*config.Config, error) {
 	return cfg, err
 }
 
-func setupResolver(cfg *config.Config) *net.Resolver {
+func setupGlobalResolver(cfg *config.Config) Resolver {
 	if cfg.DNS.Nameserver == "" {
-		return net.DefaultResolver
+		resolver := net.DefaultResolver
+		return resolver
 	}
 
 	if !strings.HasSuffix(cfg.DNS.Nameserver, ":53") {
