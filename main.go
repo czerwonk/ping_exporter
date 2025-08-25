@@ -26,7 +26,7 @@ import (
 	inotify "gopkg.in/fsnotify.v1"
 )
 
-const version string = "1.1.3"
+const version string = "1.1.4"
 
 var (
 	showVersion             = kingpin.Flag("version", "Print version information").Default().Bool()
@@ -34,10 +34,10 @@ var (
 	metricsPath             = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics").Default("/metrics").String()
 	metricsToken            = kingpin.Flag("web.token", "Token (in http request headers of queries) which to expose metrics").Default("").String()
 	serverUseTLS            = kingpin.Flag("web.tls.enabled", "Enable TLS for web server, default is false").Default().Bool()
-	serverTlsCertFile       = kingpin.Flag("web.tls.cert-file", "The certificate file for the web server").Default("").String()
-	serverTlsKeyFile        = kingpin.Flag("web.tls.key-file", "The key file for the web server").Default("").String()
+	serverTLSCertFile       = kingpin.Flag("web.tls.cert-file", "The certificate file for the web server").Default("").String()
+	serverTLSKeyFile        = kingpin.Flag("web.tls.key-file", "The key file for the web server").Default("").String()
 	serverMutualAuthEnabled = kingpin.Flag("web.tls.mutual-auth-enabled", "Enable TLS client mutual authentication, default is false").Default().Bool()
-	serverTlsCAFile         = kingpin.Flag("web.tls.ca-file", "The certificate authority file for client's certificate verification").Default("").String()
+	serverTLSCAFile         = kingpin.Flag("web.tls.ca-file", "The certificate authority file for client's certificate verification").Default("").String()
 	configFile              = kingpin.Flag("config.path", "Path to config file").Default("").String()
 	pingInterval            = kingpin.Flag("ping.interval", "Interval for ICMP echo requests").Default("5s").Duration()
 	pingTimeout             = kingpin.Flag("ping.timeout", "Timeout for ICMP echo request").Default("4s").Duration()
@@ -371,7 +371,7 @@ func hasValidToken(r *http.Request, w http.ResponseWriter) bool {
 }
 
 func confureTLS(server *http.Server) {
-	if *serverTlsCertFile == "" || *serverTlsKeyFile == "" {
+	if *serverTLSCertFile == "" || *serverTLSKeyFile == "" {
 		log.Error("'web.tls.cert-file' and 'web.tls.key-file' must be defined")
 		return
 	}
@@ -382,7 +382,7 @@ func confureTLS(server *http.Server) {
 
 	var err error
 	server.TLSConfig.Certificates = make([]tls.Certificate, 1)
-	server.TLSConfig.Certificates[0], err = tls.LoadX509KeyPair(*serverTlsCertFile, *serverTlsKeyFile)
+	server.TLSConfig.Certificates[0], err = tls.LoadX509KeyPair(*serverTLSCertFile, *serverTLSKeyFile)
 	if err != nil {
 		log.Errorf("Loading certificates error: %v", err)
 		return
@@ -391,9 +391,9 @@ func confureTLS(server *http.Server) {
 	if *serverMutualAuthEnabled {
 		server.TLSConfig.ClientAuth = tls.RequireAndVerifyClientCert
 
-		if *serverTlsCAFile != "" {
+		if *serverTLSCAFile != "" {
 			var ca []byte
-			if ca, err = os.ReadFile(*serverTlsCAFile); err != nil {
+			if ca, err = os.ReadFile(*serverTLSCAFile); err != nil {
 				log.Errorf("Loading CA error: %v", err)
 				return
 			} else {
