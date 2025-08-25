@@ -14,10 +14,11 @@ type Config struct {
 	Targets []TargetConfig `yaml:"targets"`
 
 	Ping struct {
-		Interval duration `yaml:"interval"`
-		Timeout  duration `yaml:"timeout"`
-		History  int      `yaml:"history-size"`
-		Size     uint16   `yaml:"payload-size"`
+		Interval     duration `yaml:"interval"`
+		Timeout      duration `yaml:"timeout"`
+		History      int      `yaml:"history-size"`
+		Size         uint16   `yaml:"payload-size"`
+		FirewallMark uint     `yaml:"fw-mark"`
 	} `yaml:"ping"`
 
 	DNS struct {

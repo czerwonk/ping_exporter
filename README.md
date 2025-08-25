@@ -33,6 +33,7 @@ ping:
   timeout: 3s
   history-size: 42
   payload-size: 120
+  fw-mark: 222
 
 options:
   disableIPv6: false
