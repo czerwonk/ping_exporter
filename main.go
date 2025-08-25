@@ -42,6 +42,7 @@ var (
 	pingInterval            = kingpin.Flag("ping.interval", "Interval for ICMP echo requests").Default("5s").Duration()
 	pingTimeout             = kingpin.Flag("ping.timeout", "Timeout for ICMP echo request").Default("4s").Duration()
 	pingSize                = kingpin.Flag("ping.size", "Payload size for ICMP echo requests").Default("56").Uint16()
+	firewallMark            = kingpin.Flag("ping.fw-mark", "set socket mark (SO_MARK) to this value").Default("0").Uint()
 	historySize             = kingpin.Flag("ping.history-size", "Number of results to remember per target").Default("10").Int()
 	dnsRefresh              = kingpin.Flag("dns.refresh", "Interval for refreshing DNS records and updating targets accordingly (0 if disabled)").Default("1m").Duration()
 	dnsNameServer           = kingpin.Flag("dns.nameserver", "DNS server used to resolve hostname of targets").Default("").String()
@@ -153,6 +154,13 @@ func startMonitor(cfg *config.Config, globalResolver Resolver) (*mon.Monitor, er
 
 	if pinger.PayloadSize() != cfg.Ping.Size {
 		pinger.SetPayloadSize(cfg.Ping.Size)
+	}
+
+	if cfg.Ping.FirewallMark > 0 {
+		err := pinger.SetMark(cfg.Ping.FirewallMark)
+		if err != nil {
+			return nil, fmt.Errorf("failed to set fwmark: %w", err)
+		}
 	}
 
 	monitor := mon.New(pinger,
@@ -459,6 +467,9 @@ func addFlagToConfig(cfg *config.Config) {
 	}
 	if cfg.Ping.Size == 0 {
 		cfg.Ping.Size = *pingSize
+	}
+	if cfg.Ping.FirewallMark == 0 {
+		cfg.Ping.FirewallMark = *firewallMark
 	}
 	if cfg.DNS.Refresh == 0 {
 		cfg.DNS.Refresh.Set(*dnsRefresh)
