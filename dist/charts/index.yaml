@@ -2,6 +2,16 @@ apiVersion: v1
 entries:
   ping-exporter:
   - apiVersion: v2
+    appVersion: 1.1.4
+    created: "2025-10-10T12:04:49.850438077+02:00"
+    description: Prometheus exporter for ICMP echo requests
+    digest: 6ba215aab0e36cb5b8e8a65557c69180fd91006bb4401b138a570b43edfb193f
+    name: ping-exporter
+    type: application
+    urls:
+    - ping-exporter-1.1.1.tgz
+    version: 1.1.1
+  - apiVersion: v2
     appVersion: 1.1.0
     created: "2024-02-28T11:45:46.282974652Z"
     description: Prometheus exporter for ICMP echo requests
@@ -21,4 +31,4 @@ entries:
     urls:
     - ping-exporter-1.0.0.tgz
     version: 1.0.0
-generated: "2024-02-28T11:45:46.281597437Z"
+generated: "2025-10-10T12:04:49.848345009+02:00"
