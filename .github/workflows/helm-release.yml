@@ -1,0 +1,66 @@
+name: Release Helm Chart
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "dist/charts/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "latest"
+
+      - name: Add Helm dependencies
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo update
+
+      - name: Update dependencies
+        run: helm dependency update dist/charts/ping-exporter
+
+      - name: Package Helm chart
+        run: |
+          mkdir -p .charts-tmp
+          helm package dist/charts/ping-exporter -d .charts-tmp
+
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Update Helm repository
+        run: |
+          cp .charts-tmp/*.tgz gh-pages/
+          cd gh-pages
+          helm repo index . --url https://czerwonk.github.io/ping-exporter
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            CHART_VERSION=$(helm show chart ../dist/charts/ping-exporter | grep '^version:' | awk '{print $2}')
+            git commit -m "Update Helm chart to version ${CHART_VERSION}"
+            git push
+          fi
