@@ -1,7 +1,7 @@
 on:
   push:
     tags:
-      - '*.*.*'
+      - "v*.*.*"
 
 name: Docker Build (tag)
 jobs:
@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check Out Repo 
+      - name: Check Out Repo
         uses: actions/checkout@v4
 
       - name: Login to Docker Hub
@@ -41,7 +41,7 @@ jobs:
           context: ./
           file: ./Dockerfile
           push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/${{ steps.extract_repo_name.outputs.repo }}:v${{ steps.extract_tag_name.outputs.tag }}
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/${{ steps.extract_repo_name.outputs.repo }}:${{ steps.extract_tag_name.outputs.tag }}
           platforms: linux/amd64,linux/arm64
 
       - name: Image digest
