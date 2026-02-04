@@ -4,6 +4,7 @@ package config
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -18,9 +19,9 @@ func TestParseConfig(t *testing.T) {
 		t.Error("failed to open file", err)
 		t.FailNow()
 	}
+	defer closeFileHandle(f)
 
 	c, err := FromYAML(f)
-	f.Close()
 	if err != nil {
 		t.Error("failed to parse", err)
 		t.FailNow()
@@ -99,5 +100,12 @@ func TestRoundtrip(t *testing.T) {
 	if !reflect.DeepEqual(c, after) {
 		t.Error("config after Decode(Encode(cfg)) didn't match")
 		t.FailNow()
+	}
+}
+
+func closeFileHandle(f *os.File) {
+	err := f.Close()
+	if err != nil {
+		fmt.Println("failed to close file handle:", err)
 	}
 }

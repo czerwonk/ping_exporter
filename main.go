@@ -27,6 +27,20 @@ import (
 )
 
 const version string = "1.1.5"
+const indexHTML = `<!doctype html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>ping Exporter (Version ` + version + `)</title>
+</head>
+<body>
+	<h1>ping Exporter</h1>
+	<p><a href="%s">Metrics</a></p>
+	<h2>More information:</h2>
+	<p><a href="https://github.com/czerwonk/ping_exporter">github.com/czerwonk/ping_exporter</a></p>
+</body>
+</html>
+`
 
 var (
 	showVersion             = kingpin.Flag("version", "Print version information").Default().Bool()
@@ -139,12 +153,16 @@ func startMonitor(cfg *config.Config, globalResolver Resolver) (*mon.Monitor, er
 	var bind4, bind6 string
 	if ln, err := net.Listen("tcp4", "127.0.0.1:0"); err == nil {
 		// ipv4 enabled
-		ln.Close()
+		if err := ln.Close(); err != nil {
+			return nil, fmt.Errorf("failed to close tcp4 listener: %w", err)
+		}
 		bind4 = "0.0.0.0"
 	}
 	if ln, err := net.Listen("tcp6", "[::1]:0"); err == nil {
 		// ipv6 enabled
-		ln.Close()
+		if err := ln.Close(); err != nil {
+			return nil, fmt.Errorf("failed to close tcp6 listener: %w", err)
+		}
 		bind6 = "::"
 	}
 	pinger, err := ping.New(bind4, bind6)
@@ -204,8 +222,7 @@ func upsertTargets(globalTargets *targets, globalResolver Resolver, cfg *config.
 
 		newTargets[i] = newTarget
 
-		wg.Add(1)
-		go func() {
+		wg.Go(func() {
 			err := newTarget.addOrUpdateMonitor(monitor, targetOpts{
 				disableIPv4: cfg.Options.DisableIPv4,
 				disableIPv6: cfg.Options.DisableIPv6,
@@ -213,8 +230,7 @@ func upsertTargets(globalTargets *targets, globalResolver Resolver, cfg *config.
 			if err != nil {
 				log.Errorf("failed to setup target: %v", err)
 			}
-			wg.Done()
-		}()
+		})
 	}
 	wg.Wait()
 	globalTargets.SetTargets(newTargets)
@@ -312,7 +328,9 @@ func startServer(collector *pingCollector) {
 			return
 		}
 
-		fmt.Fprintf(w, indexHTML, *metricsPath)
+		if _, err := fmt.Fprintf(w, indexHTML, *metricsPath); err != nil {
+			log.Errorf("failed to write response: %v", err)
+		}
 	})
 
 	reg := prometheus.NewRegistry()
@@ -338,7 +356,10 @@ func startServer(collector *pingCollector) {
 	}
 
 	if *serverUseTLS {
-		confureTLS(&server)
+		err = configureTLS(&server)
+		if err != nil {
+			log.Fatalf("could not configure TLS: %v", err)
+		}
 		log.Infof("Listening for %s on %s (HTTPS)", *metricsPath, *listenAddress)
 		err = server.ListenAndServeTLS("", "")
 	} else {
@@ -363,17 +384,18 @@ func hasValidToken(r *http.Request, w http.ResponseWriter) bool {
 
 	if token != *metricsToken {
 		w.WriteHeader(http.StatusForbidden)
-		fmt.Fprint(w, "wrong token")
+		if _, err := fmt.Fprint(w, "wrong token"); err != nil {
+			log.Errorf("failed to write response: %v", err)
+		}
 		return false
 	}
 
 	return true
 }
 
-func confureTLS(server *http.Server) {
+func configureTLS(server *http.Server) error {
 	if *serverTLSCertFile == "" || *serverTLSKeyFile == "" {
-		log.Error("'web.tls.cert-file' and 'web.tls.key-file' must be defined")
-		return
+		return fmt.Errorf("'web.tls.cert-file' and 'web.tls.key-file' must be defined")
 	}
 
 	server.TLSConfig = &tls.Config{
@@ -384,26 +406,36 @@ func confureTLS(server *http.Server) {
 	server.TLSConfig.Certificates = make([]tls.Certificate, 1)
 	server.TLSConfig.Certificates[0], err = tls.LoadX509KeyPair(*serverTLSCertFile, *serverTLSKeyFile)
 	if err != nil {
-		log.Errorf("Loading certificates error: %v", err)
-		return
+		return fmt.Errorf("loading certificates error: %v", err)
 	}
 
 	if *serverMutualAuthEnabled {
-		server.TLSConfig.ClientAuth = tls.RequireAndVerifyClientCert
-
-		if *serverTLSCAFile != "" {
-			var ca []byte
-			if ca, err = os.ReadFile(*serverTLSCAFile); err != nil {
-				log.Errorf("Loading CA error: %v", err)
-				return
-			} else {
-				server.TLSConfig.ClientCAs = x509.NewCertPool()
-				server.TLSConfig.ClientCAs.AppendCertsFromPEM(ca)
-			}
+		err = initMutualAuth(server)
+		if err != nil {
+			return fmt.Errorf("could not initialize mutual auth: %w", err)
 		}
 	} else {
 		server.TLSConfig.ClientAuth = tls.NoClientCert
 	}
+
+	return nil
+}
+
+func initMutualAuth(server *http.Server) error {
+	server.TLSConfig.ClientAuth = tls.RequireAndVerifyClientCert
+
+	if *serverTLSCAFile != "" {
+		var err error
+		var ca []byte
+		if ca, err = os.ReadFile(*serverTLSCAFile); err != nil {
+			return fmt.Errorf("loading CA error: %v", err)
+		} else {
+			server.TLSConfig.ClientCAs = x509.NewCertPool()
+			server.TLSConfig.ClientCAs.AppendCertsFromPEM(ca)
+		}
+	}
+
+	return nil
 }
 
 func loadConfig() (*config.Config, error) {
@@ -418,7 +450,11 @@ func loadConfig() (*config.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot load config file: %w", err)
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Errorf("failed to close config file: %v", err)
+		}
+	}()
 
 	cfg, err := config.FromYAML(f)
 	if err == nil {
@@ -487,18 +523,3 @@ func addFlagToConfig(cfg *config.Config) {
 		cfg.DNS.Timeout.Set(*dnsLookupTimeout)
 	}
 }
-
-const indexHTML = `<!doctype html>
-<html>
-<head>
-	<meta charset="UTF-8">
-	<title>ping Exporter (Version ` + version + `)</title>
-</head>
-<body>
-	<h1>ping Exporter</h1>
-	<p><a href="%s">Metrics</a></p>
-	<h2>More information:</h2>
-	<p><a href="https://github.com/czerwonk/ping_exporter">github.com/czerwonk/ping_exporter</a></p>
-</body>
-</html>
-`
