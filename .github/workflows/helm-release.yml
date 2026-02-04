@@ -30,14 +30,6 @@ jobs:
         with:
           version: "latest"
 
-      - name: Add Helm dependencies
-        run: |
-          helm repo add bitnami https://charts.bitnami.com/bitnami
-          helm repo update
-
-      - name: Update dependencies
-        run: helm dependency update dist/charts/ping-exporter
-
       - name: Package Helm chart
         run: |
           mkdir -p .charts-tmp
