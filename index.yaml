@@ -1,0 +1,14 @@
+apiVersion: v1
+entries:
+  ping-exporter:
+  - apiVersion: v2
+    appVersion: 1.1.5
+    created: "2026-02-04T06:09:20.147587204Z"
+    description: Prometheus exporter for ICMP echo requests
+    digest: e005dc68188fbf076495453414cd0663ade474bdac63f330c471576b34953969
+    name: ping-exporter
+    type: application
+    urls:
+    - https://czerwonk.github.io/ping-exporter/ping-exporter-1.1.5.tgz
+    version: 1.1.5
+generated: "2026-02-04T06:09:20.146563022Z"
