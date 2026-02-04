@@ -115,3 +115,7 @@ prometheusRules:
 # add rbac to look up targets by service name
 k8sresolver:
   create: false
+
+# Enable connection tests post-deployment
+testConnection:
+  enabled: true
