@@ -45,7 +45,7 @@ jobs:
         run: |
           cp .charts-tmp/*.tgz gh-pages/
           cd gh-pages
-          helm repo index . --url https://czerwonk.github.io/ping-exporter
+          helm repo index . --url https://czerwonk.github.io/ping_exporter
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
