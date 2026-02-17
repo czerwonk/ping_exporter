@@ -14,6 +14,8 @@ For more information check the [source code][go-ping].
 
 ### Config file
 
+Beaking Change: In v1.2.0 the config file format has changed. If you are using a older config file with custom labels, you will need to update it to the new format (see the example below).
+
 Targets can be specified in a YAML based config file:
 
 ```yaml
