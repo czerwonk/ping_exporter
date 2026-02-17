@@ -14,6 +14,7 @@ func (t *TargetConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		t.Labels = nil
 		return nil
 	}
+
 	// Temporary map to capture raw data
 	raw := make(map[string]string)
 	if err := unmarshal(&raw); err != nil {

@@ -22,8 +22,8 @@ targets:
   - 8.8.4.4
   - 2001:4860:4860::8888
   - 2001:4860:4860::8844
-  - google.com:
-      asn: 15169
+  - host: google.com
+    asn: 15169
 
 dns:
   refresh: 2m15s
