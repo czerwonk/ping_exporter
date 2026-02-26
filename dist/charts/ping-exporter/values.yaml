@@ -1,3 +1,6 @@
+# Workload kind: "Deployment" or "DaemonSet"
+kind: Deployment
+
 replicaCount: 1
 
 image:
