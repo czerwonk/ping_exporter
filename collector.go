@@ -81,8 +81,12 @@ func (p *pingCollector) Collect(ch chan<- prometheus.Metric) {
 		targetConfig := p.cfg.TargetConfigByAddr(l[0])
 		l = append(l, p.customLabels.labelValues(targetConfig)...)
 
+		if metrics.PacketsSent == 0 {
+			continue
+		}
+
 		if metrics.PacketsSent > metrics.PacketsLost {
-			if enableDeprecatedMetrics {
+			if p.enableDeprecatedMetrics {
 				p.rttDesc.Collect(ch, metrics.Best, append(l, "best")...)
 				p.rttDesc.Collect(ch, metrics.Worst, append(l, "worst")...)
 				p.rttDesc.Collect(ch, metrics.Mean, append(l, "mean")...)
