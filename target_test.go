@@ -32,13 +32,13 @@ func TestMain(m *testing.M) {
 	}
 
 	ipv4AddrGoogle, err = net.DefaultResolver.LookupIPAddr(context.TODO(), "142.250.72.206")
-	if err != nil || len(ipv4Addr) < 1 {
+	if err != nil || len(ipv4AddrGoogle) < 1 {
 		log.Fatal("skipping test, cannot resolve 142.250.72.206 to net.IPAddr")
 		return
 	}
 
 	ipv6AddrGoogle, err = net.DefaultResolver.LookupIPAddr(context.TODO(), "2607:f8b0:4005:810::200e")
-	if err != nil || len(ipv6Addr) < 1 {
+	if err != nil || len(ipv6AddrGoogle) < 1 {
 		log.Fatal("skipping test, cannot resolve 2607:f8b0:4005:810::200e to net.IPAddr")
 		return
 	}
