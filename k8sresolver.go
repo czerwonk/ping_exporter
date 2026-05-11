@@ -46,8 +46,10 @@ func (r *K8sResolver) LookupIPAddr(ctx context.Context, host string) ([]net.IPAd
 	for _, subset := range endpoints.Subsets {
 		for _, addr := range subset.Addresses {
 			_ip := net.ParseIP(addr.IP)
-			ip := net.IPAddr{IP: _ip}
-			ips = append(ips, ip)
+			if _ip == nil {
+				continue
+			}
+			ips = append(ips, net.IPAddr{IP: _ip})
 		}
 	}
 
