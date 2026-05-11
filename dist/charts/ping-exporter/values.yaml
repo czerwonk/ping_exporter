@@ -110,6 +110,8 @@ config:
 # Create a serviceMonitor resource to be consumed by Prometheus Operator
 serviceMonitor:
   enabled: false
+  scrapeInterval: 60s
+  scrapeTimeout: 30s
 
 # Create basic Prometheus alerting rules
 prometheusRules:

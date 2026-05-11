@@ -11,7 +11,8 @@ spec:
       {{- include "ping_exporter.selectorLabels" . | nindent 6 }}
   endpoints:
   - port: http
-    interval: 60s
+    interval: {{ .Values.serviceMonitor.scrapeInterval }}
+    scrapeTimeout: {{ .Values.serviceMonitor.scrapeTimeout }}
     relabelings:
       - action: labeldrop
         regex: pod
