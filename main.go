@@ -10,7 +10,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -470,8 +469,9 @@ func setupGlobalResolver(cfg *config.Config) Resolver {
 		return resolver
 	}
 
-	if !strings.HasSuffix(cfg.DNS.Nameserver, ":53") {
-		cfg.DNS.Nameserver += ":53"
+	if _, _, err := net.SplitHostPort(cfg.DNS.Nameserver); err != nil {
+		// No port present — add default DNS port, handling IPv6 correctly
+		cfg.DNS.Nameserver = net.JoinHostPort(cfg.DNS.Nameserver, "53")
 	}
 	dialer := func(ctx context.Context, _, _ string) (net.Conn, error) {
 		d := net.Dialer{}
