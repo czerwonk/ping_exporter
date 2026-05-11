@@ -25,7 +25,7 @@ import (
 	inotify "gopkg.in/fsnotify.v1"
 )
 
-const version string = "1.2.0"
+const version string = "1.2.1"
 const indexHTML = `<!doctype html>
 <html>
 <head>
