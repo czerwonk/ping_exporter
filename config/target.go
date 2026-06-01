@@ -1,12 +1,14 @@
 package config
 
+import "maps"
+
 type TargetConfig struct {
 	Addr   string
 	Labels map[string]string
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler interface.
-func (t *TargetConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (t *TargetConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	// If the input is a string, treat it as the Addr
 	var s string
 	if err := unmarshal(&s); err == nil {
@@ -32,7 +34,7 @@ func (t *TargetConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
-func (t TargetConfig) MarshalYAML() (interface{}, error) {
+func (t TargetConfig) MarshalYAML() (any, error) {
 	// If there are no labels, just return the address as a string
 	if len(t.Labels) == 0 {
 		return t.Addr, nil
@@ -41,9 +43,7 @@ func (t TargetConfig) MarshalYAML() (interface{}, error) {
 	// Otherwise, construct a map with "host" as Addr and other labels
 	m := make(map[string]string)
 	m["host"] = t.Addr
-	for k, v := range t.Labels {
-		m[k] = v
-	}
+	maps.Copy(m, t.Labels)
 
 	return m, nil
 }

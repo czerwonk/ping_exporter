@@ -4,12 +4,12 @@ import "github.com/czerwonk/ping_exporter/config"
 
 type customLabelSet struct {
 	names   []string
-	nameMap map[string]interface{}
+	nameMap map[string]any
 }
 
 func newCustomLabelSet(targets []config.TargetConfig) *customLabelSet {
 	cl := &customLabelSet{
-		nameMap: make(map[string]interface{}),
+		nameMap: make(map[string]any),
 		names:   make([]string, 0),
 	}
 

@@ -8,7 +8,7 @@ import (
 type duration time.Duration
 
 // UnmarshalYAML implements yaml.Unmarshaler interface.
-func (d *duration) UnmarshalYAML(unmashal func(interface{}) error) error {
+func (d *duration) UnmarshalYAML(unmashal func(any) error) error {
 	var s string
 	if err := unmashal(&s); err != nil {
 		return err
@@ -22,7 +22,7 @@ func (d *duration) UnmarshalYAML(unmashal func(interface{}) error) error {
 	return nil
 }
 
-func (d duration) MarshalYAML() (interface{}, error) {
+func (d duration) MarshalYAML() (any, error) {
 	return d.Duration().String(), nil
 }
 
