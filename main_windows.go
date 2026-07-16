@@ -20,13 +20,7 @@ func (m *pingExporterService) Execute(args []string, r <-chan svc.ChangeRequest,
 
 	changes <- svc.Status{State: svc.StartPending}
 
-	exporter := NewExporter(m.cfg)
-
-	err := exporter.Start()
-	if err != nil {
-		log.Errorf("failed to start exporter: %v", err)
-		return false, 1
-	}
+	go runInteractive(m.cfg)
 
 	changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 
@@ -39,7 +33,6 @@ func (m *pingExporterService) Execute(args []string, r <-chan svc.ChangeRequest,
 			case svc.Stop, svc.Shutdown:
 				log.Info("Service stop requested")
 				changes <- svc.Status{State: svc.StopPending}
-				exporter.Stop()
 				changes <- svc.Status{State: svc.Stopped}
 				return
 			default:
