@@ -127,6 +127,10 @@ func main() {
 		kingpin.FatalUsage("No targets specified")
 	}
 
+	runExporter(cfg)
+}
+
+func runInteractive(cfg *config.Config) {
 	globalResolver := setupGlobalResolver(cfg)
 
 	m, err := startMonitor(cfg, globalResolver)
