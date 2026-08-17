@@ -6,6 +6,7 @@ on:
 
 jobs:
   test:
-    uses: czerwonk/go-ci/.github/workflows/test.yml@v1
+    uses: czerwonk/go-ci/.github/workflows/test.yml@v2
     with:
-      build-command: 'CGO_ENABLED=0 go build -v -ldflags="-s -w" -trimpath -o ping_exporter'
+      build-command: go build -v -ldflags="-s -w" -trimpath -o ping_exporter
+      cgo-enabled: "0"
