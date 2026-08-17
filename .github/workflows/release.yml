@@ -1,25 +1,10 @@
+name: Release
+
 on:
   push:
     tags:
-      - "*.*.*"
+      - "v*.*.*"
 
-name: Release
 jobs:
-  goreleaser:
-    name: Create Release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: "1.26"
-
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v7
-        with:
-          args: release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  release:
+    uses: czerwonk/go-ci/.github/workflows/release.yml@v1
