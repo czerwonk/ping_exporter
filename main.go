@@ -355,7 +355,8 @@ func startServer(collector *pingCollector) {
 	})
 
 	server := http.Server{
-		Addr: *listenAddress,
+		Addr:              *listenAddress,
+		ReadHeaderTimeout: 5 * time.Second,
 	}
 
 	if *serverUseTLS {
