@@ -1,8 +1,10 @@
 #!/bin/sh
 
-if [ "$1" != "remove" ]; then
-	exit 0
-fi
+# dpkg passes "remove", rpm passes "0"; anything else is an upgrade.
+case "$1" in
+remove | 0) ;;
+*) exit 0 ;;
+esac
 
 systemctl disable ping_exporter || true
 systemctl stop ping_exporter    || true
