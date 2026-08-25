@@ -6,4 +6,4 @@ on:
 
 jobs:
   lint:
-    uses: czerwonk/go-ci/.github/workflows/lint.yml@v1
+    uses: czerwonk/go-ci/.github/workflows/lint.yml@v2
