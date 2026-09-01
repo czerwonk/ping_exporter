@@ -7,4 +7,4 @@ on:
 
 jobs:
   release:
-    uses: czerwonk/go-ci/.github/workflows/release.yml@v1
+    uses: czerwonk/go-ci/.github/workflows/release.yml@v2
