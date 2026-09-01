@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   helm:
-    uses: czerwonk/go-ci/.github/workflows/helm-release.yml@v1
+    uses: czerwonk/go-ci/.github/workflows/helm-release.yml@v2
     with:
       chart-path: dist/charts/ping-exporter
       pages-url: https://czerwonk.github.io/ping_exporter
