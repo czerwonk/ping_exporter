@@ -59,7 +59,7 @@ nfpms:
     file_name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ if eq .Mips "softfloat" }}sf{{ end }}'
 
     formats:
-      - rpm # TODO: create pre/post install/remove scripts
+      - rpm
       - deb
 
     bindir: /usr/bin
@@ -81,12 +81,10 @@ nfpms:
       - dst: /run/systemd/system/ping_exporter.service.d
         type: dir
 
-    overrides:
-      deb:
-        scripts:
-          postinstall:  dist/postinstall.sh
-          preremove:    dist/preremove.sh
-          postremove:   dist/postremove.sh
+    scripts:
+      postinstall:  dist/postinstall.sh
+      preremove:    dist/preremove.sh
+      postremove:   dist/postremove.sh
 
 changelog:
   sort: asc
