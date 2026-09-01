@@ -12,7 +12,7 @@ on:
 
 jobs:
   docker:
-    uses: czerwonk/go-ci/.github/workflows/docker-publish.yml@v1
+    uses: czerwonk/go-ci/.github/workflows/docker-publish.yml@v2
     with:
       dockerhub-image: czerwonk/ping_exporter
     secrets:
