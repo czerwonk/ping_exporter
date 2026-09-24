@@ -6,8 +6,7 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 COPY *.go ./
-COPY internal ./internal
-COPY pkg ./pkg
+COPY config ./config
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} \
   GOARM=${TARGETVARIANT#v} \
   go build -trimpath \
