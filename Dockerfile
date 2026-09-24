@@ -13,15 +13,16 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} \
   -ldflags="-s -w" \
   -o /out/ping_exporter .
 
+RUN apk --no-cache add libcap && \
+  setcap cap_net_raw+ep /out/ping_exporter
 
-FROM alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
+
+FROM gcr.io/distroless/static-debian13@sha256:58133991db06659feaabe0f4e97a35cebf15ef4ea08f8a4c6d2ee5f75e4aa6a0
 ENV CONFIG_FILE="/config/config.yml"
 ENV CMD_FLAGS=""
-RUN apk --no-cache add ca-certificates libcap
 
 WORKDIR /app
 COPY --from=builder /out/ping_exporter /app/ping_exporter
-RUN setcap cap_net_raw+ep /app/ping_exporter
 
-CMD ./ping_exporter --config.path $CONFIG_FILE $CMD_FLAGS
+ENTRYPOINT ["/app/ping_exporter"]
 EXPOSE 9427

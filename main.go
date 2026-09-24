@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -25,7 +26,7 @@ import (
 	inotify "gopkg.in/fsnotify.v1"
 )
 
-const version string = "1.2.3"
+const version string = "1.3.0"
 const indexHTML = `<!doctype html>
 <html>
 <head>
@@ -51,7 +52,7 @@ var (
 	serverTLSKeyFile        = kingpin.Flag("web.tls.key-file", "The key file for the web server").Default("").String()
 	serverMutualAuthEnabled = kingpin.Flag("web.tls.mutual-auth-enabled", "Enable TLS client mutual authentication, default is false").Default().Bool()
 	serverTLSCAFile         = kingpin.Flag("web.tls.ca-file", "The certificate authority file for client's certificate verification").Default("").String()
-	configFile              = kingpin.Flag("config.path", "Path to config file").Default("").String()
+	configFile              = kingpin.Flag("config.path", "Path to config file").Envar("CONFIG_FILE").Default("").String()
 	pingInterval            = kingpin.Flag("ping.interval", "Interval for ICMP echo requests").Default("5s").Duration()
 	pingTimeout             = kingpin.Flag("ping.timeout", "Timeout for ICMP echo request").Default("4s").Duration()
 	pingSize                = kingpin.Flag("ping.size", "Payload size for ICMP echo requests").Default("56").Uint16()
@@ -77,7 +78,13 @@ var (
 
 func main() {
 	desiredTargets = &targets{}
-	kingpin.Parse()
+
+	// CMD_FLAGS lets the container image pass extra flags without a shell to expand them.
+	args := os.Args[1:]
+	if extra := os.Getenv("CMD_FLAGS"); extra != "" {
+		args = append(args, strings.Fields(extra)...)
+	}
+	kingpin.MustParse(kingpin.CommandLine.Parse(args))
 
 	if *showVersion {
 		printVersion()
