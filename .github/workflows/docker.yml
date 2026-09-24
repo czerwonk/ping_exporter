@@ -15,6 +15,7 @@ jobs:
     uses: czerwonk/go-ci/.github/workflows/docker-publish.yml@v5
     with:
       dockerhub-image: czerwonk/ping_exporter
+      platforms: linux/amd64,linux/arm64,linux/arm/v7
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
