@@ -1,6 +1,6 @@
 module github.com/czerwonk/ping_exporter
 
-go 1.27.2
+go 1.26.9
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
