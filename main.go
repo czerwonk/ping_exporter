@@ -494,7 +494,7 @@ func setupGlobalResolver(cfg *config.Config) Resolver {
 }
 
 // addFlagToConfig updates cfg with command line flag values, unless the
-// config has non-zero values.
+// config has non-zero values or explicitly disables DNS refresh.
 func addFlagToConfig(cfg *config.Config) {
 	if len(cfg.Targets) == 0 {
 		cfg.Targets = make([]config.TargetConfig, len(*targetFlag))
@@ -519,7 +519,7 @@ func addFlagToConfig(cfg *config.Config) {
 	if cfg.Ping.FirewallMark == 0 {
 		cfg.Ping.FirewallMark = *firewallMark
 	}
-	if cfg.DNS.Refresh == 0 {
+	if cfg.DNS.Refresh == 0 && !cfg.DNSRefreshConfigured() {
 		cfg.DNS.Refresh.Set(*dnsRefresh)
 	}
 	if cfg.DNS.Nameserver == "" {
