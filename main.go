@@ -26,8 +26,9 @@ import (
 	inotify "gopkg.in/fsnotify.v1"
 )
 
-const version string = "1.3.0"
-const indexHTML = `<!doctype html>
+const (
+	version   string = "1.3.1"
+	indexHTML        = `<!doctype html>
 <html>
 <head>
 	<meta charset="UTF-8">
@@ -41,6 +42,7 @@ const indexHTML = `<!doctype html>
 </body>
 </html>
 `
+)
 
 var (
 	showVersion             = kingpin.Flag("version", "Print version information").Default().Bool()
