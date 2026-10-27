@@ -20,7 +20,7 @@ RUN apk --no-cache add libcap && \
   setcap cap_net_raw+ep /out/ping_exporter
 
 
-FROM gcr.io/distroless/static-debian13@sha256:9e0130bec991f471279b70f1630ada11e46dad439ef2949544f96001225329fb
+FROM gcr.io/distroless/static-debian13@sha256:15f8637509792e05b97d83451b0b6ccfa4abd548f997e406ac1e72c87fe1fa78
 ENV CONFIG_FILE="/config/config.yml"
 ENV CMD_FLAGS=""
 
