@@ -12,6 +12,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/digineo/go-ping"
@@ -76,6 +77,11 @@ var (
 	rttMetricsScale = rttInMills // might change in future
 	rttMode         = kingpin.Flag("metrics.rttunit", "Export ping results as either seconds (default), or milliseconds (deprecated), or both (for migrations). Valid choices: [s, ms, both]").Default("s").String()
 	desiredTargets  *targets
+
+	// activeConfig is the configuration currently in effect. It is replaced
+	// after every successful config reload, so that the periodic DNS refresh
+	// uses the reloaded options instead of the ones loaded at startup.
+	activeConfig atomic.Pointer[config.Config]
 )
 
 func main() {
@@ -202,8 +208,9 @@ func startMonitor(cfg *config.Config, globalResolver Resolver) (*mon.Monitor, er
 	if err != nil {
 		log.Fatalln(err)
 	}
+	activeConfig.Store(cfg)
 
-	go startDNSAutoRefresh(cfg.DNS.Refresh.Duration(), desiredTargets, monitor, cfg)
+	go startDNSAutoRefresh(cfg.DNS.Refresh.Duration(), desiredTargets, monitor)
 	return monitor, nil
 }
 
@@ -286,15 +293,26 @@ func watchConfig(globalTargets *targets, globalResolver Resolver, monitor *mon.M
 				continue
 			}
 			log.Infof("reloading config file %s", *configFile)
-			if err := upsertTargets(globalTargets, globalResolver, cfg, monitor); err != nil {
+			if err := applyConfig(globalTargets, globalResolver, cfg, monitor, collector); err != nil {
 				log.Errorf("failed to reload config: %v", err)
 				continue
 			}
-			collector.UpdateConfig(cfg)
 		case err := <-watcher.Errors:
 			log.Errorf("watching file failed: %v", err)
 		}
 	}
+}
+
+// applyConfig makes a reloaded config the active one: targets are updated in
+// the monitor, the collector gets the new labels and later DNS refreshes use
+// the new options.
+func applyConfig(globalTargets *targets, globalResolver Resolver, cfg *config.Config, monitor *mon.Monitor, collector *pingCollector) error {
+	if err := upsertTargets(globalTargets, globalResolver, cfg, monitor); err != nil {
+		return err
+	}
+	activeConfig.Store(cfg)
+	collector.UpdateConfig(cfg)
+	return nil
 }
 
 func removedTargets(old []*target, new *targets) []*target {
@@ -307,29 +325,34 @@ func removedTargets(old []*target, new *targets) []*target {
 	return ret
 }
 
-func startDNSAutoRefresh(interval time.Duration, tar *targets, monitor *mon.Monitor, cfg *config.Config) {
+func startDNSAutoRefresh(interval time.Duration, tar *targets, monitor *mon.Monitor) {
 	if interval <= 0 {
 		return
 	}
 
 	for range time.NewTicker(interval).C {
-		refreshDNS(tar, monitor, cfg)
+		refreshDNS(tar, monitor)
 	}
 }
 
-func refreshDNS(tar *targets, monitor *mon.Monitor, cfg *config.Config) {
+// refreshDNS re-resolves all targets using the active config and waits until
+// all lookups are done.
+func refreshDNS(tar *targets, monitor *mon.Monitor) {
 	log.Infoln("refreshing DNS")
+	cfg := activeConfig.Load()
+	var wg sync.WaitGroup
 	for _, t := range tar.Targets() {
-		go func(ta *target) {
-			err := ta.addOrUpdateMonitor(monitor, targetOpts{
+		wg.Go(func() {
+			err := t.addOrUpdateMonitor(monitor, targetOpts{
 				disableIPv4: cfg.Options.DisableIPv4,
 				disableIPv6: cfg.Options.DisableIPv6,
 			}, cfg)
 			if err != nil {
 				log.Errorf("could not refresh dns: %v", err)
 			}
-		}(t)
+		})
 	}
+	wg.Wait()
 }
 
 func startServer(collector *pingCollector) {
