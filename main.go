@@ -444,7 +444,12 @@ func initMutualAuth(server *http.Server) error {
 			return fmt.Errorf("loading CA error: %v", err)
 		} else {
 			server.TLSConfig.ClientCAs = x509.NewCertPool()
-			server.TLSConfig.ClientCAs.AppendCertsFromPEM(ca)
+			// AppendCertsFromPEM skips anything it can't parse. Without this check a
+			// CA file with no usable certificates leaves an empty pool, and every
+			// client certificate is then rejected with "unknown certificate authority".
+			if !server.TLSConfig.ClientCAs.AppendCertsFromPEM(ca) {
+				return fmt.Errorf("loading CA error: no PEM certificates found in %s", *serverTLSCAFile)
+			}
 		}
 	}
 
