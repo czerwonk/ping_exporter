@@ -11,6 +11,8 @@ import (
 
 // Config represents configuration for the exporter.
 type Config struct {
+	dnsRefreshConfigured bool
+
 	Targets []TargetConfig `yaml:"targets"`
 
 	Ping struct {
@@ -31,6 +33,30 @@ type Config struct {
 		DisableIPv6 bool `yaml:"disableIPv6"` // prohibits DNS resolved IPv6 addresses
 		DisableIPv4 bool `yaml:"disableIPv4"` // prohibits DNS resolved IPv4 addresses
 	} `yaml:"options"`
+}
+
+// UnmarshalYAML preserves whether dns.refresh was explicitly configured, since
+// zero disables DNS refresh rather than requesting the command-line default.
+func (cfg *Config) UnmarshalYAML(unmarshal func(any) error) error {
+	type plainConfig Config
+	if err := unmarshal((*plainConfig)(cfg)); err != nil {
+		return err
+	}
+	var fields struct {
+		DNS struct {
+			Refresh *duration `yaml:"refresh"`
+		} `yaml:"dns"`
+	}
+	if err := unmarshal(&fields); err != nil {
+		return err
+	}
+	cfg.dnsRefreshConfigured = fields.DNS.Refresh != nil
+	return nil
+}
+
+// DNSRefreshConfigured reports whether YAML explicitly supplies dns.refresh.
+func (cfg *Config) DNSRefreshConfigured() bool {
+	return cfg.dnsRefreshConfigured
 }
 
 // FromYAML reads YAML from reader and unmarshals it to Config.
