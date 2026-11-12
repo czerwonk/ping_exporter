@@ -12,7 +12,7 @@ For more information check the [source code][go-ping].
 
 ### Config file
 
-Beaking Change: In v1.2.0 the config file format has changed. If you are using a older config file with custom labels, you will need to update it to the new format (see the example below).
+Breaking Change: In v1.2.0 the config file format has changed. If you are using an older config file with custom labels, you will need to update it to the new format (see the example below).
 
 Targets can be specified in a YAML based config file:
 
@@ -24,6 +24,7 @@ targets:
   - 2001:4860:4860::8844
   - host: google.com
     asn: 15169
+    env: prod
 
 dns:
   refresh: 2m15s
@@ -39,6 +40,10 @@ ping:
 options:
   disableIPv6: false
 ```
+
+A target can be a bare address or a mapping. In a mapping, `host` is the
+address (or name) to ping, and every other key (`asn` and `env` in the
+example) becomes a label on that target's metrics.
 
 Note: domains are resolved (regularly) to their corresponding A and AAAA
 records (IPv4 and IPv6). By default, `ping_exporter` uses the system
@@ -65,7 +70,8 @@ interval or history size, you must restart the exporter.
 
 Each metric has labels `ip` (the target's IP address), `ip_version`
 (4 or 6, corresponding to the IP version), and `target` (the target's
-name).
+name), plus any custom labels defined on the target in the config file
+(for example `asn` and `env` in the snippet above).
 
 Additionally, a `ping_up` metric reports whether the exporter
 is running (and in which version).
