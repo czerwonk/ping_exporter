@@ -564,4 +564,7 @@ func addFlagToConfig(cfg *config.Config) {
 	if cfg.DNS.Timeout == 0 {
 		cfg.DNS.Timeout.Set(*dnsLookupTimeout)
 	}
+	if cfg.Web.ListenAddress != "" {
+		*listenAddress = cfg.Web.ListenAddress
+	}
 }
