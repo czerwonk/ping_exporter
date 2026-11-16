@@ -39,11 +39,18 @@ ping:
 
 options:
   disableIPv6: false
+
+web:
+  listen-address: ":9427"
 ```
 
 A target can be a bare address or a mapping. In a mapping, `host` is the
 address (or name) to ping, and every other key (`asn` and `env` in the
 example) becomes a label on that target's metrics.
+
+`web.listen-address` sets the address of the metrics HTTP server (the same
+value as `--web.listen-address`). `listenAddress` is accepted as an alias.
+If this key is omitted, the command-line flag is used (default `:9427`).
 
 Note: domains are resolved (regularly) to their corresponding A and AAAA
 records (IPv4 and IPv6). By default, `ping_exporter` uses the system

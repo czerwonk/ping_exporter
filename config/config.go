@@ -33,6 +33,12 @@ type Config struct {
 		DisableIPv6 bool `yaml:"disableIPv6"` // prohibits DNS resolved IPv6 addresses
 		DisableIPv4 bool `yaml:"disableIPv4"` // prohibits DNS resolved IPv4 addresses
 	} `yaml:"options"`
+
+	Web struct {
+		// ListenAddress is the address for the metrics HTTP server
+		// (the same value as --web.listen-address).
+		ListenAddress string `yaml:"listen-address"`
+	} `yaml:"web"`
 }
 
 // UnmarshalYAML preserves whether dns.refresh was explicitly configured, since
@@ -46,11 +52,18 @@ func (cfg *Config) UnmarshalYAML(unmarshal func(any) error) error {
 		DNS struct {
 			Refresh *duration `yaml:"refresh"`
 		} `yaml:"dns"`
+		Web struct {
+			ListenAddressCamel string `yaml:"listenAddress"`
+		} `yaml:"web"`
 	}
 	if err := unmarshal(&fields); err != nil {
 		return err
 	}
 	cfg.dnsRefreshConfigured = fields.DNS.Refresh != nil
+	// Accept the camelCase alias used in #117 in addition to listen-address.
+	if cfg.Web.ListenAddress == "" && fields.Web.ListenAddressCamel != "" {
+		cfg.Web.ListenAddress = fields.Web.ListenAddressCamel
+	}
 	return nil
 }
 

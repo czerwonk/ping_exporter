@@ -69,6 +69,9 @@ func TestParseConfig(t *testing.T) {
 	if expected := true; c.Options.DisableIPv6 != expected {
 		t.Errorf("expected options.disable-ipv6 to be %v, got %v", expected, c.Options.DisableIPv6)
 	}
+	if expected := "127.0.0.1:9427"; c.Web.ListenAddress != expected {
+		t.Errorf("expected web.listen-address to be %q, got %q", expected, c.Web.ListenAddress)
+	}
 }
 
 func TestRoundtrip(t *testing.T) {
@@ -100,6 +103,22 @@ func TestRoundtrip(t *testing.T) {
 	if !reflect.DeepEqual(c, after) {
 		t.Error("config after Decode(Encode(cfg)) didn't match")
 		t.FailNow()
+	}
+}
+
+func TestParseConfigListenAddressCamelCase(t *testing.T) {
+	t.Parallel()
+
+	c, err := FromYAML(bytes.NewBufferString(`targets:
+  - 8.8.8.8
+web:
+  listenAddress: localhost:9427
+`))
+	if err != nil {
+		t.Fatalf("failed to parse: %v", err)
+	}
+	if expected := "localhost:9427"; c.Web.ListenAddress != expected {
+		t.Fatalf("expected web.listenAddress to be %q, got %q", expected, c.Web.ListenAddress)
 	}
 }
 
