@@ -10,3 +10,4 @@ jobs:
     with:
       build-command: go build -v -ldflags="-s -w" -trimpath -o ping_exporter
       cgo-enabled: "0"
+      platforms: '["ubuntu-latest"]'
