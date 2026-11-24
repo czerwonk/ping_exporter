@@ -12,7 +12,7 @@ on:
 
 jobs:
   docker:
-    uses: czerwonk/go-ci/.github/workflows/docker-publish.yml@v5
+    uses: czerwonk/go-ci/.github/workflows/docker-publish.yml@v6
     with:
       dockerhub-image: czerwonk/ping_exporter
       platforms: linux/amd64,linux/arm64,linux/arm/v7
